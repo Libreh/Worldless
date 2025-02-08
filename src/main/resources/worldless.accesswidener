@@ -1,0 +1,7 @@
+accessWidener v2 named
+
+accessible field net/minecraft/server/MinecraftServer saving Z
+accessible field net/minecraft/server/MinecraftServer session Lnet/minecraft/world/level/storage/LevelStorage$Session;
+
+accessible method net/minecraft/util/thread/ThreadExecutor cancelTasks ()V
+accessible method net/minecraft/server/MinecraftServer loadWorld ()V

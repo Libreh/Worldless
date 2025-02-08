@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "me.libreh.worldless.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "LevelPropertiesAccessor",
+    "ServerChunkLoadingManagerAccessor",
+    "ServerChunkManagerAccessor",
+    "ServerChunkManagerMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

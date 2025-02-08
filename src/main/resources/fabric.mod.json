@@ -1,0 +1,31 @@
+{
+	"schemaVersion": 1,
+	"id": "worldless",
+	"version": "${version}",
+	"name": "Worldless",
+	"description": "Sserver-side Worldless mod for Fabric",
+	"authors": [
+		"Libreh"
+	],
+	"contact": {
+		"sources": "https://github.com/FabricMC/fabric-example-mod"
+	},
+	"license": "OSL-3.0",
+	"icon": "assets/worldless/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+          "me.libreh.worldless.Worldless"
+		]
+	},
+	"mixins": [
+		"worldless.mixins.json"
+	],
+	"accessWidener" : "worldless.accesswidener",
+	"depends": {
+		"fabricloader": ">=0.16.9",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
