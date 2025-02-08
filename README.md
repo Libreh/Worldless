@@ -19,7 +19,9 @@ All permissions are available with operator as well
 ```json5
 {
   // Is heard at 10 seconds or lower
-  "countdownSounds": true
+  "countdownSounds": true,
+  // Self-explanatory
+  "endTimerOnDragonDeath": true
 }
 ```
 

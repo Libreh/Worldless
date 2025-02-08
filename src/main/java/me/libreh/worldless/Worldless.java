@@ -46,13 +46,11 @@ public class Worldless implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		CommandRegistrationCallback.EVENT.register((dispatcher, access, environment) -> {
-			Commands.worldlessCommand(dispatcher);
-		});
+		CommandRegistrationCallback.EVENT.register((dispatcher, access, environment) -> Commands.worldlessCommand(dispatcher));
 
 		ServerLifecycleEvents.SERVER_STARTING.register(server -> {
 			SERVER = server;
-			Config.load();
+			Config.loadConfig();
 		});
 		ServerLifecycleEvents.SERVER_STARTED.register(server -> unzipLobbyWorld());
 

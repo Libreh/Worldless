@@ -20,7 +20,7 @@ public class Commands {
                                 hasPermission(source.getPlayer(), "worldless.reload")) || (!source.isExecutedByPlayer())
                         )
                         .executes(context -> {
-                            Config.load();
+                            Config.saveConfig();
 
                             return Command.SINGLE_SUCCESS;
                         })
@@ -52,7 +52,7 @@ public class Commands {
         );
     }
 
-    private static void stop() {
+    public static void stop() {
         startTimer = false;
     }
 
