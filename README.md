@@ -15,6 +15,14 @@ This mod DELETES WORLD FILES on startup and shutdown!
 
 All permissions are available with operator as well
 
+## Configuration
+```json5
+{
+  // Is heard at 10 seconds or lower
+  "countdownSounds": true
+}
+```
+
 ## Credits
 This mod was inspired by:
 - The World Resets every 5 Minutes, Can we beat it? YouTube video: 
