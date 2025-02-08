@@ -5,8 +5,6 @@
   "mixins": [
     "LevelPropertiesAccessor",
     "PhaseManagerMixin",
-    "ServerChunkLoadingManagerAccessor",
-    "ServerChunkManagerAccessor",
     "ServerChunkManagerMixin"
   ],
   "injectors": {
