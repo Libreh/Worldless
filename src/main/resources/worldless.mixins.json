@@ -5,7 +5,8 @@
   "mixins": [
     "LevelPropertiesAccessor",
     "PhaseManagerMixin",
-    "ServerChunkManagerMixin"
+    "ServerChunkManagerMixin",
+    "ServerPlayerEntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1

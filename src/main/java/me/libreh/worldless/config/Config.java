@@ -18,7 +18,7 @@ public class Config {
     }
 
     public boolean countdownSounds = true;
-    public boolean endTimerOnDragonDeath = true;
+    public String endTimerOn = "END_FOUNTAIN";
 
     public static void loadConfig() {
         Config oldConfig = CONFIG;

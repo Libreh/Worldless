@@ -32,7 +32,7 @@ public class Commands {
                         .executes(context -> {
                             var timer = IntegerArgumentType.getInteger(context, "timer");
                             if (timer == 0) {
-                                stop();
+                                stopTimer();
                             } else {
                                 resetTimer = timer * 20 + 40 - 1;
                                 worldTimer = resetTimer;
@@ -44,16 +44,12 @@ public class Commands {
                 )
                 .then(literal("stop")
                         .executes(context -> {
-                            stop();
+                            stopTimer();
 
                             return Command.SINGLE_SUCCESS;
                         })
                 )
         );
-    }
-
-    public static void stop() {
-        startTimer = false;
     }
 
     private static boolean hasPermission(ServerPlayerEntity player, String key) {

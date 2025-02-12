@@ -9,6 +9,7 @@ import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.entity.boss.dragon.EnderDragonFight;
 import net.minecraft.network.packet.c2s.play.ClientStatusC2SPacket;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -28,13 +29,12 @@ import org.slf4j.LoggerFactory;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.OptionalLong;
-import java.util.Set;
+import java.util.*;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
 public class Worldless implements ModInitializer {
-	public static final String MOD_ID = "worldvanisher";
+	public static final String MOD_ID = "worldless";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static MinecraftServer SERVER;
 	public static boolean shouldCancelSaving;
@@ -43,6 +43,7 @@ public class Worldless implements ModInitializer {
 	public static int worldTimer;
 	public static int resetTimer;
 	public static ServerTaskExecutor taskExecutor;
+	public static List<UUID> FOUNTAIN_PLAYERS = new ArrayList<>();
 
 	@Override
 	public void onInitialize() {
@@ -111,6 +112,10 @@ public class Worldless implements ModInitializer {
 		});
 	}
 
+	public static void stopTimer() {
+		startTimer = false;
+	}
+
 	private static void tickKeepAlive(MinecraftServer server) {
 		if (server.getNetworkIo() != null) {
 			server.getNetworkIo().tick();
@@ -157,9 +162,12 @@ public class Worldless implements ModInitializer {
 
 		unzipLobbyWorld();
 
+		FOUNTAIN_PLAYERS.clear();
 		for (ServerPlayerEntity player : SERVER.getPlayerManager().getPlayerList()) {
 			updatePlayer(player);
 		}
+		var end = SERVER.getWorld(World.END);
+		end.setEnderDragonFight(new EnderDragonFight(end, SERVER.getSaveProperties().getGeneratorOptions().getSeed(), SERVER.getSaveProperties().getDragonFight()));
 		worldTimer = resetTimer;
 		startTimer = true;
 	}
