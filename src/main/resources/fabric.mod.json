@@ -3,7 +3,7 @@
 	"id": "worldless",
 	"version": "${version}",
 	"name": "Worldless",
-	"description": "Sserver-side Worldless mod for Fabric",
+	"description": "World resetting challenge mod",
 	"authors": [
 		"Libreh"
 	],
