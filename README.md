@@ -20,8 +20,8 @@ All permissions are available with operator as well
 {
   // Is heard at 10 seconds or lower
   "countdownSounds": true,
-  // Ends timer on DRAGON_DEATH or END_FOUNDATION (all players have to be in it)
-  "endTimerOn": "DRAGON_DEATH"
+  // Ends timer on DRAGON_DEATH or END_FOUNTAIN (all players have to be in it)
+  "endTimerOn": "END_FOUNTAIN"
 }
 ```
 
