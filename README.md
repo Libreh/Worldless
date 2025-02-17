@@ -29,4 +29,4 @@ All permissions are available with operator as well
 This mod was inspired by:
 - DISCLAIMER: I am NOT the original creator of the mod/plugin shown in the video
   - The World Resets every 5 Minutes, Can we beat it? YouTube video: 
-    - https://www.youtube.com/watch?v=--IQ56rqYhE&t=34s
+    - https://www.youtube.com/watch?v=--IQ56rqYhE
