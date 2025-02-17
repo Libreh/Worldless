@@ -1,6 +1,4 @@
-﻿![Logo](https://i.imgur.com/udSDGS8.png)
-
-# Worldless
+﻿# Worldless
 A server-side Worldless mod for Fabric.
 
 ```txt
@@ -26,4 +24,4 @@ All permissions are available with operator as well
 ```
 
 ## Credits
-- [The World Resets every 5 Minutes, Can we beat it?](https://www.youtube.com/watch?v=--IQ56rqYhE&t=34s) [inspiration]
+- [The World Resets every 5 Minutes, Can we beat it?](https://www.youtube.com/watch?v=--IQ56rqYhE) [inspiration]
