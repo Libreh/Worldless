@@ -1,30 +1,19 @@
 package me.libreh.worldless.world;
 
 import me.libreh.worldless.Worldless;
-import me.libreh.worldless.config.ConfigManager;
 import me.libreh.worldless.mixin.LevelPropertiesAccessor;
-import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.entity.boss.dragon.EnderDragonFight;
-import net.minecraft.registry.RegistryKey;
-import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
-import net.minecraft.util.math.random.RandomSeed;
-import net.minecraft.world.World;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.StandardCopyOption;
-import java.util.*;
+import java.util.Comparator;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
-import java.util.Comparator;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipInputStream;
 
 public class WorldResetService {
     private static final String[] WORLD_DATA_DIRECTORIES = {"region", "poi", "entities"};

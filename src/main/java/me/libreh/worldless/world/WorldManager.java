@@ -1,10 +1,11 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.math.random.RandomSeed;
 
-import java.util.*;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Manages world state, resets, countdowns, and player management for Worldless.

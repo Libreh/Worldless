@@ -3,7 +3,6 @@ package me.libreh.worldless.mixin;
 import me.libreh.worldless.Worldless;
 import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;

@@ -1,6 +1,5 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.Worldless;
 import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;

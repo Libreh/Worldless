@@ -1,7 +1,6 @@
 package me.libreh.worldless.command;
 
 import com.mojang.brigadier.CommandDispatcher;
-import me.libreh.worldless.Worldless;
 import me.libreh.worldless.command.worldless.ReloadCommand;
 import me.libreh.worldless.command.worldless.StopCommand;
 import me.libreh.worldless.command.worldless.TimerCommand;
