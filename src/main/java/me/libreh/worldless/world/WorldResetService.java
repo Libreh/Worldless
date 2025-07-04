@@ -14,6 +14,7 @@ import java.util.Comparator;
 import java.util.OptionalLong;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 public class WorldResetService {
     private static final String[] WORLD_DATA_DIRECTORIES = {"region", "poi", "entities"};
@@ -76,16 +77,20 @@ public class WorldResetService {
         }
     }
 
-    private void deleteDirectoryRecursively(Path path) throws IOException {
-        Files.walk(path)
-                .sorted(Comparator.reverseOrder())
-                .forEach(p -> {
-                    try {
-                        Files.deleteIfExists(p);
-                    } catch (IOException e) {
-                        Worldless.LOGGER.warn("Failed to delete file: {}", p, e);
-                    }
-                });
+    private void deleteDirectoryRecursively(Path path) {
+        try (Stream<Path> pathStream = Files.walk(path)) {
+            pathStream
+                    .sorted(Comparator.reverseOrder())
+                    .forEach(p -> {
+                        try {
+                            Files.deleteIfExists(p);
+                        } catch (IOException e) {
+                            Worldless.LOGGER.warn("Failed to delete file: {}", p, e);
+                        }
+                    });
+        } catch (IOException e) {
+            Worldless.LOGGER.warn("Failed to walk through directory: {}", path, e);
+        }
     }
 
     private void regenerateWorld(long seed) {
