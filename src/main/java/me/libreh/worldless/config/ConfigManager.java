@@ -2,59 +2,89 @@ package me.libreh.worldless.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParser;
 import me.libreh.worldless.Worldless;
 import net.fabricmc.loader.api.FabricLoader;
 
+import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
-import static me.libreh.worldless.Worldless.MOD_ID;
-
 public class ConfigManager {
-    public static int VERSION = 1;
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve(MOD_ID + ".json");
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    public static ConfigManager INSTANCE;
 
-    private static Config CONFIG;
+    private ConfigManager() {}
 
-    public static Config getConfig() {
-        if (CONFIG == null) {
-            return Config.DEFAULT;
-        }
-        return CONFIG;
-    }
+    public static final int VERSION = 2;
+    private final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("worldless.json");
+    private final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
-    public static boolean loadConfig() {
-        boolean ENABLED;
+    private Config CONFIG;
 
+    public boolean loadConfig() {
+        Config oldConfig = CONFIG;
+        boolean success;
         try {
-            Config config;
-
             if (Files.exists(CONFIG_PATH)) {
-                config = GSON.fromJson(Files.readString(CONFIG_PATH), Config.class);
+                try (var reader = Files.newBufferedReader(CONFIG_PATH)) {
+                    CONFIG = GSON.fromJson(reader, Config.class);
+                }
+                migrateIfNeeded();
             } else {
-                config = new Config();
+                CONFIG = new Config();
             }
-            config.version = VERSION;
-            overrideConfig(config);
-            CONFIG = config;
-            ENABLED = true;
+            CONFIG.version = VERSION;
+            saveConfig();
+            success = true;
         } catch(Throwable exception) {
-            ENABLED = false;
+            success = false;
+            CONFIG = oldConfig;
             Worldless.LOGGER.error("Something went wrong while reading config!");
             exception.printStackTrace();
         }
-
-        return ENABLED;
+        return success;
     }
 
-    public static void overrideConfig(Config config) {
+    public void saveConfig() {
         try {
-            Files.writeString(CONFIG_PATH, GSON.toJson(config));
-            CONFIG = config;
+            Files.writeString(CONFIG_PATH, GSON.toJson(CONFIG));
         } catch (Exception e) {
             Worldless.LOGGER.error("Something went wrong while saving config!");
             e.printStackTrace();
         }
+    }
+
+    private void migrateIfNeeded() throws IOException {
+        try (var reader = Files.newBufferedReader(CONFIG_PATH)) {
+            var config = JsonParser.parseReader(reader);
+            var configJson = config.getAsJsonObject();
+
+            if (configJson.get("config_version").getAsInt() == 1) {
+                var endTimerOn = configJson.get("end_timer_on").getAsString();
+                boolean endFountainEnter = false;
+                boolean dragonDeath = false;
+                if (endTimerOn.equals("end_fountain")) {
+                    endFountainEnter = true;
+                } else {
+                    dragonDeath = true;
+                }
+                CONFIG.timerStop.endFountainEnter = endFountainEnter;
+                CONFIG.timerStop.dragonDeath = dragonDeath;
+            }
+        }
+    }
+
+    public static ConfigManager getInstance() {
+        if (INSTANCE == null) {
+            INSTANCE = new ConfigManager();
+        }
+        return INSTANCE;
+    }
+
+    public Config getConfig() {
+        if (CONFIG == null) {
+            CONFIG = Config.DEFAULT;
+        }
+        return CONFIG;
     }
 }

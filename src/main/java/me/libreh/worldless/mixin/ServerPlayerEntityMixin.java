@@ -3,6 +3,7 @@ package me.libreh.worldless.mixin;
 import me.libreh.worldless.Worldless;
 import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,9 +17,17 @@ public class ServerPlayerEntityMixin {
 
     @Inject(at = @At(value = "TAIL"), method = "detachForDimensionChange")
     private void detach(CallbackInfo ci) {
-        Worldless.fountainPlayers.add(player.getUuid());
-        if (ConfigManager.getConfig().endTimerOn.equals("end_fountain") && Worldless.fountainPlayers.size() == player.getServer().getPlayerManager().getPlayerList().size()) {
-            Worldless.isCountdownRunning = false;
+        Worldless.getWorldManager().fountainPlayers.add(player.getUuid());
+        if (shouldStop()) {
+            Worldless.getWorldManager().stopCountdown();
         }
+    }
+
+    @Unique
+    private boolean shouldStop() {
+        if (!ConfigManager.getInstance().getConfig().timerStop.endFountainEnter) return false;
+        int fountainPlayersCount = Worldless.getWorldManager().fountainPlayers.size();
+        int playerCount = player.getServer().getPlayerManager().getPlayerList().size();
+        return fountainPlayersCount == playerCount;
     }
 }

@@ -13,8 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class PhaseManagerMixin {
     @Inject(method = "setPhase", at = @At("TAIL"))
     private void runnersWon(PhaseType<?> type, CallbackInfo ci) {
-        if (type == PhaseType.DYING && ConfigManager.getConfig().endTimerOn.equals("dragon_death")) {
-            Worldless.isCountdownRunning = false;
+        if (type == PhaseType.DYING && ConfigManager.getInstance().getConfig().timerStop.dragonDeath) {
+            Worldless.getWorldManager().stopCountdown();
         }
     }
 }

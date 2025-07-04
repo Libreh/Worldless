@@ -8,9 +8,9 @@
 		"Libreh"
 	],
 	"contact": {
-		"sources": "https://github.com/FabricMC/fabric-example-mod"
+		"sources": "https://github.com/Libreh/Worldless"
 	},
-	"license": "OSL-3.0",
+	"license": "LGPLv3",
 	"icon": "assets/worldless/icon.png",
 	"environment": "*",
 	"entrypoints": {
@@ -23,8 +23,8 @@
 	],
 	"accessWidener" : "worldless.accesswidener",
 	"depends": {
-		"fabricloader": ">=0.16.9",
-		"minecraft": "~1.21.4",
+		"fabricloader": ">=0.16.14",
+		"minecraft": "~1.21.6",
 		"java": ">=21",
 		"fabric-api": "*"
 	}
