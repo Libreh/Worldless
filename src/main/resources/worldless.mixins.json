@@ -3,10 +3,10 @@
   "package": "me.libreh.worldless.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
+    "EnderDragonEntityMixin",
     "LevelPropertiesAccessor",
-    "PhaseManagerMixin",
     "ServerChunkManagerMixin",
-    "ServerPlayerEntityMixin"
+    "EntityMixin"
   ],
   "injectors": {
     "defaultRequire": 1
