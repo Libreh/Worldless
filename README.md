@@ -1,8 +1,6 @@
 ﻿# Worldless
 A server-side Worldless mod for Fabric.
 
-If you have any suggestions or found a bug feel free to open an issue! (PRs welcome)
-
 ```txt
 ⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
 This mod DELETES the WORLD DIRECTORIES
@@ -38,3 +36,5 @@ All permissions are available with operator as well
 
 ## Credits
 - [The World Resets every 5 Minutes, Can we beat it?](https://www.youtube.com/watch?v=--IQ56rqYhE) [inspiration]
+
+### If you have any suggestions or found a bug feel free to open an issue! (PRs welcome)
