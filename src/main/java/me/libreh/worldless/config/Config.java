@@ -11,10 +11,13 @@ public class Config {
     @SerializedName("countdown_sounds")
     public boolean countdownSounds = true;
 
-    @SerializedName("timer_stop_on")
-    public TimerStopOn timerStop = new TimerStopOn();
+    @SerializedName("stop_timer_on")
+    public StopTimerOn stopTimerOn = new StopTimerOn();
 
-    public static class TimerStopOn {
+    @SerializedName("seed")
+    public String seed = "random";
+
+    public static class StopTimerOn {
         @SerializedName("end_fountain_enter")
         public boolean endFountainEnter = true;
 

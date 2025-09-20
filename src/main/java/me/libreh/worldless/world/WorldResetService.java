@@ -1,11 +1,14 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.Worldless;
+import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.config.ConfigManager;
 import me.libreh.worldless.mixin.LevelPropertiesAccessor;
+import me.libreh.worldless.util.SeedUtils;
 import net.minecraft.entity.boss.dragon.EnderDragonFight;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.server.world.ServerWorld;
+import net.minecraft.world.World;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -35,18 +38,21 @@ public class WorldResetService {
         this.fountainPlayers = fountainPlayers;
     }
 
-    public void resetWorlds(long seed) {
+    public void resetWorlds() {
+        String seedString = ConfigManager.getInstance().getConfig().seed;
+        long seed = SeedUtils.parseSeed(seedString);
+
         try {
             prepareWorldReset();
             saveWorldData();
             deleteWorldFiles();
             regenerateWorld(seed);
         } catch (IOException e) {
-            Worldless.LOGGER.error("World reset failed", e);
+            WorldlessMod.LOGGER.error("World reset failed", e);
         } finally {
             server.saving = false;
         }
-        completeWorldReset();
+        completeWorldReset(seed);
     }
 
     private void prepareWorldReset() {
@@ -85,11 +91,11 @@ public class WorldResetService {
                         try {
                             Files.deleteIfExists(p);
                         } catch (IOException e) {
-                            Worldless.LOGGER.warn("Failed to delete file: {}", p, e);
+                            WorldlessMod.LOGGER.warn("Failed to delete file: {}", p, e);
                         }
                     });
         } catch (IOException e) {
-            Worldless.LOGGER.warn("Failed to walk through directory: {}", path, e);
+            WorldlessMod.LOGGER.warn("Failed to walk through directory: {}", path, e);
         }
     }
 
@@ -100,13 +106,18 @@ public class WorldResetService {
         tickKeepAlive();
     }
 
-    private void completeWorldReset() {
+    private void completeWorldReset(long seed) {
         lobbyWorldService.unzipLobbyWorld();
         fountainPlayers.clear();
         for (ServerPlayerEntity player : server.getPlayerManager().getPlayerList()) {
             playerManager.updatePlayer(player);
         }
-        server.getSaveProperties().setDragonFight(EnderDragonFight.Data.DEFAULT);
+        resetEnderDragonFight(seed);
+    }
+
+    private void resetEnderDragonFight(long seed) {
+        ServerWorld endWorld = server.getWorld(World.END);
+        endWorld.setEnderDragonFight(new EnderDragonFight(endWorld, seed, server.getSaveProperties().getDragonFight()));
     }
 
     private void tickKeepAlive() {
