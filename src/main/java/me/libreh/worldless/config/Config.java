@@ -11,6 +11,9 @@ public class Config {
     @SerializedName("countdown_sounds")
     public boolean countdownSounds = true;
 
+    @SerializedName("restart_message")
+    public boolean restartMessage = true;
+
     @SerializedName("stop_timer_on")
     public StopTimerOn stopTimerOn = new StopTimerOn();
 

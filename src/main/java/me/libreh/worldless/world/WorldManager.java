@@ -29,6 +29,7 @@ public class WorldManager {
 
         countdownManager.tick();
         if (!countdownManager.isCountdownActive()) {
+            countdownManager.broadcastRestart();
             worldResetService.resetWorlds();
             countdownManager.continueCountdown();
         }
