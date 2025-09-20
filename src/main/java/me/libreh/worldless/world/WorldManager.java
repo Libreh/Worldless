@@ -1,6 +1,10 @@
 package me.libreh.worldless.world;
 
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.network.ServerPlayerEntity;
+import net.minecraft.text.Style;
+import net.minecraft.text.Text;
+import net.minecraft.util.Formatting;
 import net.minecraft.util.math.random.RandomSeed;
 
 import java.util.HashSet;
@@ -11,11 +15,12 @@ public class WorldManager {
     public final boolean cancelSaving = true;
     public final Set<UUID> fountainPlayers = new HashSet<>();
     private final CountdownManager countdownManager;
+    private final PlayerManager playerManager;
     private final WorldResetService worldResetService;
 
     public WorldManager(MinecraftServer server) {
         ServerTaskExecutor taskExecutor = new ServerTaskExecutor(server);
-        PlayerManager playerManager = new PlayerManager(server, taskExecutor);
+        this.playerManager = new PlayerManager(server, taskExecutor);
         LobbyWorldService lobbyWorldService = new LobbyWorldService();
         this.countdownManager = new CountdownManager(server);
         this.worldResetService = new WorldResetService(
@@ -33,6 +38,10 @@ public class WorldManager {
             worldResetService.resetWorlds();
             countdownManager.continueCountdown();
         }
+    }
+
+    public boolean shouldStop(ServerPlayerEntity player) {
+        return playerManager.shouldStop(player);
     }
 
     public void setCountdownTimer(long seconds) {
