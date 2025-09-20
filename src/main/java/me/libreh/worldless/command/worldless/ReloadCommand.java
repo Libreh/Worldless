@@ -13,13 +13,13 @@ public class ReloadCommand extends BaseCommand {
             .formatted(Formatting.RED);
 
     public ReloadCommand() {
-        super("reload", "worldless.reload");
+        super("reload");
     }
 
     @Override
-    protected int execute(CommandContext<ServerCommandSource> ctx) {
+    public int run(CommandContext<ServerCommandSource> context) {
         boolean ok = ConfigManager.getInstance().loadConfig();
-        ctx.getSource().sendFeedback(() -> ok ? SUCCESS : FAILURE, false);
+        context.getSource().sendFeedback(() -> ok ? SUCCESS : FAILURE, false);
         return ok ? 1 : 0;
     }
 }

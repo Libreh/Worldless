@@ -1,18 +1,18 @@
 package me.libreh.worldless.command.worldless;
 
 import com.mojang.brigadier.context.CommandContext;
-import me.libreh.worldless.Worldless;
+import me.libreh.worldless.WorldlessMod;
 import me.libreh.worldless.command.BaseCommand;
 import net.minecraft.server.command.ServerCommandSource;
 
 public class StopCommand extends BaseCommand {
     public StopCommand() {
-        super("stop", "worldless.main");
+        super("stop");
     }
 
     @Override
-    protected int execute(CommandContext<ServerCommandSource> ctx) {
-        Worldless.getWorldManager().stopCountdown();
+    public int run(CommandContext<ServerCommandSource> context) {
+        WorldlessMod.getWorldManager().stopCountdown();
         return 1;
     }
 }

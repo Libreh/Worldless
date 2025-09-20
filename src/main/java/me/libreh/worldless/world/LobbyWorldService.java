@@ -1,8 +1,7 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.Worldless;
+import me.libreh.worldless.WorldlessMod;
 import net.fabricmc.loader.api.FabricLoader;
-import net.minecraft.world.World;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -12,36 +11,9 @@ import java.util.zip.ZipInputStream;
 
 public class LobbyWorldService {
     private static final String LOBBY_WORLD_ZIP_PATH = "/worldless/lobby_world.zip";
-//    private final Path worldDir;
-
-    public LobbyWorldService() {
-//        this.worldDir = FabricLoader.getInstance().getGameDir().resolve("world");
-    }
-
-//    public void unzipLobbyWorld() {
-//        try (InputStream is = World.class.getResourceAsStream(LOBBY_WORLD_ZIP_PATH)) {
-//            try (ZipInputStream zis = new ZipInputStream(is)) {
-//                ZipEntry entry;
-//                while ((entry = zis.getNextEntry()) != null) {
-//                    Path targetPath = worldDir.resolve(entry.getName()).normalize();
-//                    if (!targetPath.startsWith(worldDir)) {
-//                        throw new IOException("Invalid zip entry: " + entry.getName());
-//                    }
-//                    if (entry.isDirectory()) {
-//                        Files.createDirectories(targetPath);
-//                    } else {
-//                        Files.createDirectories(targetPath.getParent());
-//                        Files.copy(zis, targetPath, StandardCopyOption.REPLACE_EXISTING);
-//                    }
-//                }
-//            }
-//        } catch (IOException e) {
-//            Worldless.LOGGER.error("Failed to unzip lobby world", e);
-//        }
-//    }
 
     public void unzipLobbyWorld() {
-        try (ZipInputStream is = new ZipInputStream(World.class.getResourceAsStream(LOBBY_WORLD_ZIP_PATH))) {
+        try (ZipInputStream is = new ZipInputStream(WorldlessMod.class.getResourceAsStream(LOBBY_WORLD_ZIP_PATH))) {
             byte[] buffer = new byte[1024];
             ZipEntry entry;
 
@@ -60,7 +32,7 @@ public class LobbyWorldService {
                 }
             }
         } catch (IOException e) {
-            Worldless.LOGGER.error("Failed to unzip lobby world", e);
+            WorldlessMod.LOGGER.error("Failed to unzip lobby world", e);
         }
     }
 

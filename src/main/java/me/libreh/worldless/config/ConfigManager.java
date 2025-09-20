@@ -3,9 +3,10 @@ package me.libreh.worldless.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
-import me.libreh.worldless.Worldless;
+import me.libreh.worldless.WorldlessMod;
 import net.fabricmc.loader.api.FabricLoader;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -16,8 +17,9 @@ public class ConfigManager {
     private ConfigManager() {}
 
     public static final int VERSION = 2;
-    private final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("worldless.json");
-    private final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private static final String CONFIG_NAME = "worldless.json";
+    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve(CONFIG_NAME);
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     private Config CONFIG;
 
@@ -25,21 +27,25 @@ public class ConfigManager {
         Config oldConfig = CONFIG;
         boolean success;
         try {
-            if (Files.exists(CONFIG_PATH)) {
+            Config config;
+            File configFile = CONFIG_PATH.toFile();
+
+            if (configFile.exists()) {
                 try (var reader = Files.newBufferedReader(CONFIG_PATH)) {
-                    CONFIG = GSON.fromJson(reader, Config.class);
+                    config = GSON.fromJson(reader, Config.class);
                 }
                 migrateIfNeeded();
             } else {
-                CONFIG = new Config();
+                config = new Config();
             }
-            CONFIG.version = VERSION;
+            config.version = VERSION;
+            CONFIG = config;
             saveConfig();
             success = true;
         } catch(Throwable exception) {
             success = false;
             CONFIG = oldConfig;
-            Worldless.LOGGER.error("Something went wrong while reading config!");
+            WorldlessMod.LOGGER.error("Error reading config!");
             exception.printStackTrace();
         }
         return success;
@@ -49,7 +55,7 @@ public class ConfigManager {
         try {
             Files.writeString(CONFIG_PATH, GSON.toJson(CONFIG));
         } catch (Exception e) {
-            Worldless.LOGGER.error("Something went wrong while saving config!");
+            WorldlessMod.LOGGER.error("Error saving config!");
             e.printStackTrace();
         }
     }
@@ -68,8 +74,8 @@ public class ConfigManager {
                 } else {
                     dragonDeath = true;
                 }
-                CONFIG.timerStop.endFountainEnter = endFountainEnter;
-                CONFIG.timerStop.dragonDeath = dragonDeath;
+                CONFIG.stopTimerOn.endFountainEnter = endFountainEnter;
+                CONFIG.stopTimerOn.dragonDeath = dragonDeath;
             }
         }
     }
