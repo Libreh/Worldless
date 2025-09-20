@@ -1,9 +1,12 @@
 ﻿# Worldless
 A server-side Worldless mod for Fabric.
 
+If you have any suggestions or found a bug feel free to open an issue! (PRs welcome)
+
 ```txt
 ⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
-This mod DELETES WORLD FILES on startup and shutdown!
+This mod DELETES the WORLD DIRECTORIES
+region, poi, and entities on startup AND shutdown
 ⚠️⚠️⚠️ ⚠️⚠️⚠️ ⚠️⚠️⚠️
 ```
 
@@ -19,9 +22,11 @@ All permissions are available with operator as well
 {
   // Don't touch!
   "config_version": 2,
-  // Is heard at 10 seconds or lower.
+  // Enable timer countdown sounds
   "countdown_sounds": true,
-  // Stops the timer if condition is met
+  // Enable restart chat message
+  "restart_message": true,
+  // Stop the timer if either condition is met
   "timer_stop_on": {
     // All players have to enter
     "end_fountain_enter": false,
