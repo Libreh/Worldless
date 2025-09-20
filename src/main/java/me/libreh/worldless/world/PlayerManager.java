@@ -1,7 +1,7 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.Worldless;
 import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
 import net.minecraft.server.MinecraftServer;
