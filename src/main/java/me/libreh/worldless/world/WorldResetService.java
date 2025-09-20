@@ -116,6 +116,7 @@ public class WorldResetService {
     }
 
     private void resetEnderDragonFight(long seed) {
+        server.getSaveProperties().setDragonFight(EnderDragonFight.Data.DEFAULT);
         ServerWorld endWorld = server.getWorld(World.END);
         endWorld.setEnderDragonFight(new EnderDragonFight(endWorld, seed, server.getSaveProperties().getDragonFight()));
     }

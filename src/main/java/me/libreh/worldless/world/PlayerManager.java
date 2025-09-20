@@ -65,4 +65,11 @@ public class PlayerManager {
         );
         taskExecutor.execute(() -> updatePlayer(player));
     }
+
+    public boolean shouldStop(ServerPlayerEntity player) {
+        if (!ConfigManager.getInstance().getConfig().stopTimerOn.endFountainEnter) return false;
+        int fountainPlayersCount = WorldlessMod.getWorldManager().fountainPlayers.size();
+        int playerCount = player.getServer().getPlayerManager().getPlayerList().size();
+        return fountainPlayersCount == playerCount;
+    }
 } 
