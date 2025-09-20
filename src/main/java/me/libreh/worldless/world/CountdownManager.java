@@ -47,7 +47,6 @@ public class CountdownManager {
         worldTimer -= TICKS_PER_SECOND;
         if (worldTimer <= 0) {
             isCountdownActive = false;
-            // World reset should be triggered externally
             return;
         }
         updateTimerDisplay();
