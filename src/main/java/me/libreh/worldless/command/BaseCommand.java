@@ -8,16 +8,14 @@ import net.minecraft.server.network.ServerPlayerEntity;
 
 public abstract class BaseCommand implements ModCommand {
     private final String name;
-    private final String permission;
 
-    protected BaseCommand(String name, String permission) {
+    protected BaseCommand(String name) {
         this.name = name;
-        this.permission = WorldlessMod.MOD_ID + permission;
     }
 
     public LiteralArgumentBuilder<ServerCommandSource> register() {
         return ModCommand.literal(name)
-            .requires(src -> hasPermission(src.getPlayer(), permission))
+            .requires(src -> hasPermission(src.getPlayer(), WorldlessMod.MOD_ID + name))
             .executes(this);
     }
 
