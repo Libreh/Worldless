@@ -3,7 +3,7 @@ package me.libreh.worldless.config;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonParser;
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
@@ -45,7 +45,7 @@ public class ConfigManager {
         } catch(Throwable exception) {
             success = false;
             CONFIG = oldConfig;
-            WorldlessMod.LOGGER.error("Error reading config!");
+            Worldless.LOGGER.error("Error reading config!");
             exception.printStackTrace();
         }
         return success;
@@ -55,7 +55,7 @@ public class ConfigManager {
         try {
             Files.writeString(CONFIG_PATH, GSON.toJson(CONFIG));
         } catch (Exception e) {
-            WorldlessMod.LOGGER.error("Error saving config!");
+            Worldless.LOGGER.error("Error saving config!");
             e.printStackTrace();
         }
     }

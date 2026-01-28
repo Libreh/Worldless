@@ -11,7 +11,7 @@ import net.minecraft.util.Identifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class WorldlessMod implements ModInitializer {
+public final class Worldless implements ModInitializer {
 	public static final String MOD_ID = "worldless";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Identifier LOBBY_WORLD_ID = Identifier.of(MOD_ID, "lobby");

@@ -1,6 +1,6 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.registry.RegistryKey;
 import net.minecraft.registry.RegistryKeys;
@@ -29,9 +29,9 @@ public class PlayerManager {
     }
 
     public void teleportToLobby(ServerPlayerEntity player) {
-        ServerWorld lobbyWorld = server.getWorld(RegistryKey.of(RegistryKeys.WORLD, WorldlessMod.LOBBY_WORLD_ID));
+        ServerWorld lobbyWorld = server.getWorld(RegistryKey.of(RegistryKeys.WORLD, Worldless.LOBBY_WORLD_ID));
         if (lobbyWorld == null) {
-            WorldlessMod.LOGGER.warn("Lobby world not found, using overworld spawn");
+            Worldless.LOGGER.warn("Lobby world not found, using overworld spawn");
             teleportToOverworldSpawn(player);
             return;
         }
@@ -68,7 +68,7 @@ public class PlayerManager {
 
     public boolean shouldStop(ServerPlayerEntity player) {
         if (!ConfigManager.getInstance().getConfig().stopTimerOn.endFountainEnter) return false;
-        int fountainPlayersCount = WorldlessMod.getWorldManager().fountainPlayers.size();
+        int fountainPlayersCount = Worldless.getWorldManager().fountainPlayers.size();
         int playerCount = player.getServer().getPlayerManager().getPlayerList().size();
         return fountainPlayersCount == playerCount;
     }

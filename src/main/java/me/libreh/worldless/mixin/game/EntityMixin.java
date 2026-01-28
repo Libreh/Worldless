@@ -1,6 +1,6 @@
-package me.libreh.worldless.mixin;
+package me.libreh.worldless.mixin.game;
 
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import net.minecraft.block.EndPortalBlock;
 import net.minecraft.block.Portal;
 import net.minecraft.entity.Entity;
@@ -14,15 +14,15 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Entity.class)
 public class EntityMixin {
     @Inject(method = "tryUsePortal", at = @At("TAIL"))
-    private void worldless$tryUsePortal(Portal portal, BlockPos pos, CallbackInfo ci) {
+    private void tryUsePortal(Portal portal, BlockPos pos, CallbackInfo ci) {
         if (portal instanceof EndPortalBlock && ((Entity) (Object) this) instanceof ServerPlayerEntity serverPlayer) {
-            var worldManager = WorldlessMod.getWorldManager();
+            var worldManager = Worldless.getWorldManager();
             boolean shouldStop = worldManager.shouldStop(serverPlayer);
 
             worldManager.fountainPlayers.add(serverPlayer.getUuid());
 
             if (shouldStop) {
-                WorldlessMod.getWorldManager().stopCountdown();
+                Worldless.getWorldManager().stopCountdown();
             }
         }
     }

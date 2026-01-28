@@ -1,8 +1,8 @@
-package me.libreh.worldless.mixin;
+package me.libreh.worldless.mixin.game;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import me.libreh.worldless.config.ConfigManager;
 import net.minecraft.entity.boss.dragon.EnderDragonEntity;
 import net.minecraft.server.world.ServerWorld;
@@ -30,7 +30,7 @@ public class EnderDragonEntityMixin {
     @Unique
     private void stopCountdownIfDead() {
         if (ConfigManager.getInstance().getConfig().stopTimerOn.dragonDeath) {
-            WorldlessMod.getWorldManager().stopCountdown();
+            Worldless.getWorldManager().stopCountdown();
         }
     }
 }

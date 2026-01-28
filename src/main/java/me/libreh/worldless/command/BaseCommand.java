@@ -1,7 +1,7 @@
 package me.libreh.worldless.command;
 
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.minecraft.server.command.ServerCommandSource;
 import net.minecraft.server.network.ServerPlayerEntity;
@@ -15,7 +15,7 @@ public abstract class BaseCommand implements ModCommand {
 
     public LiteralArgumentBuilder<ServerCommandSource> register() {
         return ModCommand.literal(name)
-            .requires(src -> hasPermission(src.getPlayer(), WorldlessMod.MOD_ID + name))
+            .requires(src -> hasPermission(src.getPlayer(), Worldless.MOD_ID + name))
             .executes(this);
     }
 

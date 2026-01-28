@@ -3,7 +3,7 @@ package me.libreh.worldless.command.worldless;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import me.libreh.worldless.command.BaseCommand;
 import me.libreh.worldless.util.TimeUtils;
 import net.minecraft.server.command.ServerCommandSource;
@@ -21,9 +21,9 @@ public class TimerCommand extends BaseCommand {
         String durationInput = StringArgumentType.getString(context, "duration");
         long seconds = TimeUtils.parseDuration(durationInput);
         if (seconds == 0) {
-            WorldlessMod.getWorldManager().stopCountdown();
+            Worldless.getWorldManager().stopCountdown();
         } else {
-            WorldlessMod.getWorldManager().setCountdownTimer(seconds);
+            Worldless.getWorldManager().setCountdownTimer(seconds);
         }
         return 1;
     }

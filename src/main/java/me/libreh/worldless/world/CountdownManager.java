@@ -58,7 +58,7 @@ public class CountdownManager {
             return;
         }
         Style style = Style.EMPTY.withBold(true).withFormatting(Formatting.GREEN);
-        broadcastTimer(Text.literal("Restarting...").setStyle(style), false);
+        broadcastTimer(Text.literal("Resetting...").setStyle(style), false);
     }
 
     private void updateTimerDisplay() {

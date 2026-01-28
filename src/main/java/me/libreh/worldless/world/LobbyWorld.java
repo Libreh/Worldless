@@ -1,6 +1,6 @@
 package me.libreh.worldless.world;
 
-import me.libreh.worldless.WorldlessMod;
+import me.libreh.worldless.Worldless;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.File;
@@ -9,11 +9,11 @@ import java.io.IOException;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 
-public class LobbyWorldService {
+public class LobbyWorld {
     private static final String LOBBY_WORLD_ZIP_PATH = "/worldless/lobby_world.zip";
 
     public void unzipLobbyWorld() {
-        try (ZipInputStream is = new ZipInputStream(WorldlessMod.class.getResourceAsStream(LOBBY_WORLD_ZIP_PATH))) {
+        try (ZipInputStream is = new ZipInputStream(Worldless.class.getResourceAsStream(LOBBY_WORLD_ZIP_PATH))) {
             byte[] buffer = new byte[1024];
             ZipEntry entry;
 
@@ -32,7 +32,7 @@ public class LobbyWorldService {
                 }
             }
         } catch (IOException e) {
-            WorldlessMod.LOGGER.error("Failed to unzip lobby world", e);
+            Worldless.LOGGER.error("Failed to unzip lobby world", e);
         }
     }
 

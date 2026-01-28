@@ -3,10 +3,13 @@
   "package": "me.libreh.worldless.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "EnderDragonEntityMixin",
-    "LevelPropertiesAccessor",
-    "ServerChunkManagerMixin",
-    "EntityMixin"
+    "game.EnderDragonEntityMixin",
+    "game.EntityMixin",
+    "world.ServerChunkManagerMixin",
+    "world.LevelPropertiesAccessor",
+    "world.MinecraftServerAccessor",
+    "world.RaidsAccessor",
+    "world.ThreadExecutorAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

@@ -2,10 +2,6 @@ package me.libreh.worldless.world;
 
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.network.ServerPlayerEntity;
-import net.minecraft.text.Style;
-import net.minecraft.text.Text;
-import net.minecraft.util.Formatting;
-import net.minecraft.util.math.random.RandomSeed;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -16,14 +12,14 @@ public class WorldManager {
     public final Set<UUID> fountainPlayers = new HashSet<>();
     private final CountdownManager countdownManager;
     private final PlayerManager playerManager;
-    private final WorldResetService worldResetService;
+    private final ResetManager worldResetService;
 
     public WorldManager(MinecraftServer server) {
         ServerTaskExecutor taskExecutor = new ServerTaskExecutor(server);
         this.playerManager = new PlayerManager(server, taskExecutor);
-        LobbyWorldService lobbyWorldService = new LobbyWorldService();
+        LobbyWorld lobbyWorldService = new LobbyWorld();
         this.countdownManager = new CountdownManager(server);
-        this.worldResetService = new WorldResetService(
+        this.worldResetService = new ResetManager(
             server, playerManager, lobbyWorldService, fountainPlayers
         );
         lobbyWorldService.unzipLobbyWorld();

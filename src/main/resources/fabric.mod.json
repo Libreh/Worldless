@@ -15,7 +15,7 @@
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-			"me.libreh.worldless.WorldlessMod"
+          "me.libreh.worldless.Worldless"
 		]
 	},
 	"mixins": [
