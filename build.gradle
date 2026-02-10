@@ -63,7 +63,7 @@ var isStable = project.is_stable == "true"
 if (System.getenv("MODRINTH")) {
     modrinth {
         token = System.getenv("MODRINTH")
-        projectId = '6jEbbeXn'// The ID of your modrinth project, slugs will not work.
+        projectId = 'wDzF9EIN'// The ID of your modrinth project, slugs will not work.
         versionNumber = "" + version // The version of the mod to upload.
         versionType = isStable ? "release" : "beta"
         uploadFile = remapJar // This links to a task that builds your mod jar and sets "uploadFile" to the mod jar.
