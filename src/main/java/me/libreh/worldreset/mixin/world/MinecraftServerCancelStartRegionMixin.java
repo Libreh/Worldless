@@ -12,7 +12,7 @@ public class MinecraftServerCancelStartRegionMixin {
     @Inject(at = @At(value = "HEAD"), method = "prepareLevels", cancellable = true)
     private void prepareStartRegion(CallbackInfo ci) {
         MinecraftServer server = (MinecraftServer) (Object) this;
-        if (server.isDedicatedServer() || WorldReset.getWorldManager().isCancelSaving()) {
+        if (server.isDedicatedServer() || WorldReset.getWorldManager() != null && WorldReset.getWorldManager().isCancelSaving()) {
             ci.cancel();
         }
     }
