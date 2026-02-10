@@ -1,9 +1,9 @@
 {
 	"schemaVersion": 1,
-	"id": "worldless",
+	"id": "worldreset",
 	"version": "${version}",
-	"name": "Worldless",
-	"description": "World resetting challenge mod",
+	"name": "Worldreset",
+	"description": "World resetting utilty for Fabric",
 	"authors": [
 		"Libreh"
 	],
@@ -11,17 +11,17 @@
 		"sources": "https://github.com/Libreh/Worldless"
 	},
 	"license": "LGPLv3",
-	"icon": "assets/worldless/icon.png",
+	"icon": "assets/worldreset/icon.png",
 	"environment": "*",
 	"entrypoints": {
 		"main": [
-          "me.libreh.worldless.Worldless"
+          "me.libreh.worldreset.WorldReset"
 		]
 	},
+    "accessWidener" : "worldreset.accesswidener",
 	"mixins": [
-		"worldless.mixins.json"
+      "worldreset.mixins.json"
 	],
-	"accessWidener" : "worldless.accesswidener",
 	"depends": {
 		"fabricloader": ">=0.16.14",
 		"minecraft": "~1.21.6",

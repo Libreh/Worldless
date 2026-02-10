@@ -1,0 +1,13 @@
+{
+  "type": "worldreset:lobby",
+  "generator": {
+    "type": "minecraft:flat",
+    "settings": {
+      "biome": "worldreset:lobby",
+      "lakes": false,
+      "features": false,
+      "layers": [],
+      "structure_overrides": []
+    }
+  }
+}

@@ -1,17 +1,11 @@
-﻿# Worldless
-A server-side Worldless mod for Fabric.
-
-```txt
-⚠️⚠️⚠️ WARNING ⚠️⚠️⚠️
-This mod DELETES the WORLD DIRECTORIES
-region, poi, and entities on startup AND shutdown
-⚠️⚠️⚠️ ⚠️⚠️⚠️ ⚠️⚠️⚠️
-```
+﻿# World Reset
+A world resetting utility for Fabric.
 
 ## Commands and permissions
-- `/worldless reload` - Reloads configuration (requires `worldless.reload`)
-- `/worldless <seconds>` - Makes the world vanish every X seconds (requires `worldless.main`)
-- `/worldless stop` - Stops the world vanishing, `/worldless 0` also works (requires `worldless.main`)
+- `/worldreset reload` - Reloads configuration (requires `worldreset.reload`)
+- `/worldreset <seconds>` - Makes the world reset every X seconds (requires `worldreset.main`)
+- `/worldreset stop` - Stops the world reset, `/worldreset 0` also works (requires `worldreset.main`)
+- `/reset` - Performs a world reset immediately (requires `worldreset.reset`)
 
 All permissions are available with operator as well
 
@@ -30,7 +24,9 @@ All permissions are available with operator as well
     "end_fountain_enter": false,
     // Has to die "naturally" (no /kill)
     "dragon_death": true
-  }
+  },
+  // Supports long or random seed
+  "seed": "random"
 }
 ```
 
