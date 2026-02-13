@@ -36,10 +36,6 @@ public class ResetManager {
         this.fountainPlayers = fountainPlayers;
     }
 
-    public void resetWorlds() {
-        resetWorlds("");
-    }
-
     public void resetWorlds(String seed) {
         String seedString = seed;
         if (seedString.isEmpty()) {
@@ -205,7 +201,7 @@ public class ResetManager {
         WorldOptions worldOptions = server.getWorldData().worldGenOptions();
         boolean debug = server.getWorldData().isDebugWorld();
 
-        MinecraftServer.setInitialSpawn(overworld, serverLevelData, worldOptions.generateBonusChest(), debug);
+        MinecraftServer.setInitialSpawn(overworld, serverLevelData, worldOptions.generateBonusChest(), debug, server.levelLoadListener);
     }
 
 //    private void resetEnderDragonFight(long seed) {

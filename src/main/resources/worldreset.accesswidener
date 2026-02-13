@@ -1,3 +1,4 @@
 accessWidener v2 named
 
-accessible method net/minecraft/server/MinecraftServer setInitialSpawn (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/storage/ServerLevelData;ZZ)V
+accessible method net/minecraft/server/MinecraftServer setInitialSpawn (Lnet/minecraft/server/level/ServerLevel;Lnet/minecraft/world/level/storage/ServerLevelData;ZZLnet/minecraft/server/level/progress/LevelLoadListener;)V
+accessible field net/minecraft/server/MinecraftServer levelLoadListener Lnet/minecraft/server/level/progress/LevelLoadListener;

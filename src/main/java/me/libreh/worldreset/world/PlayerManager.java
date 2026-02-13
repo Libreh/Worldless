@@ -48,7 +48,7 @@ public class PlayerManager {
 
     public void teleportToOverworldSpawn(ServerPlayer player) {
         ServerLevel overworld = server.overworld();
-        BlockPos worldSpawnPos = overworld.getSharedSpawnPos();
+        BlockPos worldSpawnPos = overworld.getRespawnData().pos();
         Vec3 spawnPos = player.adjustSpawnLocation(overworld, worldSpawnPos).getBottomCenter();
         player.teleportTo(
                 overworld,
@@ -56,8 +56,8 @@ public class PlayerManager {
                 spawnPos.y(),
                 spawnPos.z(),
                 Set.of(),
-                overworld.getSharedSpawnAngle(),
-                0.0F,
+                overworld.getRespawnData().pitch(),
+                overworld.getRespawnData().yaw(),
                 true
         );
     }
@@ -73,7 +73,7 @@ public class PlayerManager {
     public boolean shouldStop(ServerPlayer player) {
         if (!ConfigManager.config().stopTimerOn.endFountainEnter) return false;
         int fountainPlayersCount = WorldReset.getWorldManager().fountainPlayers.size();
-        int playerCount = player.getServer().getPlayerList().getPlayers().size();
+        int playerCount = player.level().getServer().getPlayerList().getPlayers().size();
         return fountainPlayersCount == playerCount;
     }
 } 
