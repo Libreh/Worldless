@@ -27,7 +27,7 @@ public final class WorldReset implements ModInitializer {
 	public static final ResourceLocation LOBBY_WORLD_ID = ResourceLocation.fromNamespaceAndPath(MOD_ID, "lobby");
 
 	private static WorldManager worldManager;
-    public static WorldManager getWorldManager() {
+    public static WorldManager worlds() {
         return worldManager;
     }
 
@@ -51,7 +51,7 @@ public final class WorldReset implements ModInitializer {
 	}
 
     public static boolean hasPermission(CommandSourceStack source, String permission) {
-        return Permissions.check(source.getPlayer(), WorldReset.MOD_ID + "." + permission, 3);
+        return Permissions.check(source, WorldReset.MOD_ID + "." + permission, 3);
     }
 
     private void copyDatapack(LobbyWorld lobbyWorld) {

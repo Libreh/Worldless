@@ -72,7 +72,7 @@ public class PlayerManager {
 
     public boolean shouldStop(ServerPlayer player) {
         if (!ConfigManager.config().stopTimerOn.endFountainEnter) return false;
-        int fountainPlayersCount = WorldReset.getWorldManager().fountainPlayers.size();
+        int fountainPlayersCount = WorldReset.worlds().fountainPlayers.size();
         int playerCount = player.level().getServer().getPlayerList().getPlayers().size();
         return fountainPlayersCount == playerCount;
     }

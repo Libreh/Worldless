@@ -1,5 +1,6 @@
 package me.libreh.worldreset.world;
 
+import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -39,7 +40,7 @@ public class CountdownManager {
     }
 
     public boolean isCountdownActive() {
-        return isCountdownActive;
+        return isCountdownActive && WorldReset.worlds().state() == WorldState.LOAD;
     }
 
     public void tick() {
