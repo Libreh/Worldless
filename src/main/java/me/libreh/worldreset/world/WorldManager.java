@@ -13,6 +13,7 @@ public class WorldManager {
     private final CountdownManager countdownManager;
     private final PlayerManager playerManager;
     private final ResetManager resetManager;
+    private WorldState state = WorldState.LOAD;
 
     public WorldManager(MinecraftServer server, LobbyWorld lobbyWorld) {
         ServerTaskExecutor taskExecutor = new ServerTaskExecutor(server);
@@ -36,7 +37,9 @@ public class WorldManager {
     }
 
     public void resetWorlds(String seed) {
+        state = WorldState.RESET;
         resetManager.resetWorlds(seed);
+        state = WorldState.LOAD;
     }
 
     public boolean shouldStop(ServerPlayer player) {
@@ -57,5 +60,9 @@ public class WorldManager {
 
     public void setCancelSaving(boolean shouldCancelSaving) {
         this.shouldCancelSaving = shouldCancelSaving;
+    }
+
+    public WorldState state() {
+        return state;
     }
 }
