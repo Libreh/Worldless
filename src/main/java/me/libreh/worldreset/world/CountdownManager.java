@@ -1,9 +1,11 @@
 package me.libreh.worldreset.world;
 
+import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
+import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -39,7 +41,7 @@ public class CountdownManager {
     }
 
     public boolean isCountdownActive() {
-        return isCountdownActive;
+        return isCountdownActive && WorldReset.worlds().state() == WorldState.LOAD;
     }
 
     public void tick() {
@@ -86,7 +88,7 @@ public class CountdownManager {
         final float pitchDecrement = 0.2f;
         float pitch = basePitch - (seconds * pitchDecrement);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            player.playNotifySound(SoundEvents.NOTE_BLOCK_PLING.value(), SoundSource.RECORDS, 1.0f, pitch);
+            player.connection.send(new ClientboundSoundPacket(SoundEvents.NOTE_BLOCK_PLING, SoundSource.RECORDS, player.getX(), player.getY(), player.getZ(), 1.0f, pitch, player.level().getRandom().nextLong()));
         }
     }
 }

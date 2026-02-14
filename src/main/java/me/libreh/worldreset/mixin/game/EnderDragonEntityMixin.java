@@ -30,7 +30,7 @@ public class EnderDragonEntityMixin {
     @Unique
     private void stopCountdownIfDead() {
         if (ConfigManager.config().stopTimerOn.dragonDeath) {
-            WorldReset.getWorldManager().stopCountdown();
+            WorldReset.worlds().stopCountdown();
         }
     }
 }

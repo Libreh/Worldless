@@ -13,7 +13,8 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
+import net.minecraft.server.permissions.PermissionLevel;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,10 +25,10 @@ import java.util.List;
 public final class WorldReset implements ModInitializer {
 	public static final String MOD_ID = "worldreset";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
-	public static final ResourceLocation LOBBY_WORLD_ID = ResourceLocation.fromNamespaceAndPath(MOD_ID, "lobby");
+	public static final Identifier LOBBY_WORLD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "lobby");
 
 	private static WorldManager worldManager;
-    public static WorldManager getWorldManager() {
+    public static WorldManager worlds() {
         return worldManager;
     }
 
@@ -51,7 +52,7 @@ public final class WorldReset implements ModInitializer {
 	}
 
     public static boolean hasPermission(CommandSourceStack source, String permission) {
-        return Permissions.check(source.getPlayer(), WorldReset.MOD_ID + "." + permission, 3);
+        return Permissions.check(source, WorldReset.MOD_ID + "." + permission, PermissionLevel.GAMEMASTERS);
     }
 
     private void copyDatapack(LobbyWorld lobbyWorld) {

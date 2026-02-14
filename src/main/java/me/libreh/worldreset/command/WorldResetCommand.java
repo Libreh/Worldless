@@ -40,15 +40,15 @@ public final class WorldResetCommand {
         String durationInput = StringArgumentType.getString(ctx, "duration");
         long seconds = TimeUtil.parseDuration(durationInput);
         if (seconds == 0) {
-            WorldReset.getWorldManager().stopCountdown();
+            WorldReset.worlds().stopCountdown();
         } else {
-            WorldReset.getWorldManager().setCountdownTimer(seconds);
+            WorldReset.worlds().setCountdownTimer(seconds);
         }
         return 1;
     }
 
     private static int stopTimer() {
-        WorldReset.getWorldManager().stopCountdown();
+        WorldReset.worlds().stopCountdown();
         return 1;
     }
 

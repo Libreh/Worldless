@@ -2,7 +2,7 @@ package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import org.apache.commons.io.IOUtils;
@@ -28,7 +28,7 @@ public class LobbyWorld {
         WorldReset.LOGGER.debug("Preparing the WorldReset lobby...");
 
         try {
-            ResourceLocation lobbyWorldId = ResourceLocation.fromNamespaceAndPath("worldreset", "lobby");
+            Identifier lobbyWorldId = Identifier.fromNamespaceAndPath("worldreset", "lobby");
             Path storageDir = getLevelSaveDir(server, lobbyWorldId);
 
             if (storageDir == null) {
@@ -106,9 +106,9 @@ public class LobbyWorld {
         }
     }
 
-    private Path getLevelSaveDir(MinecraftServer server, ResourceLocation worldId) {
+    private Path getLevelSaveDir(MinecraftServer server, Identifier worldId) {
         for (ServerLevel world : server.getAllLevels()) {
-            if (world.dimension().location().equals(worldId)) {
+            if (world.dimension().identifier().equals(worldId)) {
                 return ((MinecraftServerAccessor) server).getStorageSource().getDimensionPath(world.dimension());
             }
         }

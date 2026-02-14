@@ -51,14 +51,14 @@ public class ResetManager {
         try {
             saveWorldData();
             cancelTasks();
-            WorldReset.getWorldManager().setCancelSaving(true);
+            WorldReset.worlds().setCancelSaving(true);
             closeAndDeleteWorlds();
             lobbyWorld.prepareLobbyFiles(server);
             tickKeepAlive();
             loadNewWorlds(seedLong);
         } finally {
             setSaving(false);
-            WorldReset.getWorldManager().setCancelSaving(false);
+            WorldReset.worlds().setCancelSaving(false);
         }
         completeWorldReset(seedLong);
     }

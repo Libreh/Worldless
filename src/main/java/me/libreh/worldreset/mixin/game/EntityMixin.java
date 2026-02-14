@@ -16,13 +16,13 @@ public class EntityMixin {
     @Inject(method = "setAsInsidePortal", at = @At("TAIL"))
     private void setAsInsidePortal(Portal portal, BlockPos blockPos, CallbackInfo ci) {
         if (portal instanceof EndPortalBlock && ((Entity) (Object) this) instanceof ServerPlayer serverPlayer) {
-            var worldManager = WorldReset.getWorldManager();
+            var worldManager = WorldReset.worlds();
             boolean shouldStop = worldManager.shouldStop(serverPlayer);
 
             worldManager.fountainPlayers.add(serverPlayer.getUUID());
 
             if (shouldStop) {
-                WorldReset.getWorldManager().stopCountdown();
+                WorldReset.worlds().stopCountdown();
             }
         }
     }

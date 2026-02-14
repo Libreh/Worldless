@@ -21,7 +21,7 @@ public class ResetCommand {
     }
 
     private static int resetWorlds(String seed) {
-        WorldReset.getWorldManager().resetWorlds(seed);
+        WorldReset.worlds().resetWorlds(seed);
         return 1;
     }
 }
