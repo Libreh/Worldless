@@ -1,6 +1,7 @@
 package me.libreh.worldreset.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.context.CommandContext;
 import me.libreh.worldreset.WorldReset;
@@ -24,6 +25,10 @@ public final class WorldResetCommand {
                 .then(Commands.literal("stop")
                         .requires(src -> WorldReset.hasPermission(src, "stop"))
                         .executes(ctx -> stopTimer()))
+                .then(Commands.literal("seed")
+                        .requires(src -> WorldReset.hasPermission(src, "seed"))
+                        .then(Commands.argument("seed", LongArgumentType.longArg())
+                                .executes(WorldResetCommand::setSeed)))
         );
     }
 
@@ -52,5 +57,10 @@ public final class WorldResetCommand {
         return 1;
     }
 
-
+    private static int setSeed(CommandContext<CommandSourceStack> ctx) {
+        long seed = LongArgumentType.getLong(ctx, "seed");
+        ConfigManager.config().seed = String.valueOf(seed);
+        ConfigManager.save();
+        return 1;
+    }
 }
