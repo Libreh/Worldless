@@ -1,9 +1,9 @@
 {
   "pack": {
-    "pack_format": 15,
-    "supported_formats": [
-      57
-    ],
-    "description": "Manhunt Lobby"
+    "pack_format": 48,
+    "supported_formats": [48, 94.1],
+    "min_format": 48,
+    "max_format": 94.1,
+    "description": "WorldReset Lobby"
   }
 }
