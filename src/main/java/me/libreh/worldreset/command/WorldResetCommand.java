@@ -30,6 +30,26 @@ public final class WorldResetCommand {
                         .then(Commands.argument("seed", LongArgumentType.longArg())
                                 .executes(WorldResetCommand::setSeed)))
         );
+                .then(Commands.literal("spawn")
+                        .requires(src -> WorldReset.hasPermission(src, "spawn"))
+                        .then(Commands.literal("none")
+                                .executes(ctx -> setSpawnType(ctx.getSource(), "none", "")))
+                        .then(Commands.literal("structure")
+                                .then(Commands.argument("id", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE))
+                                        .executes(ctx -> setSpawnType(ctx.getSource(), "structure",
+                                                ResourceOrTagKeyArgument.getResourceOrTagKey(ctx, "id", Registries.STRUCTURE, INVALID_STRUCTURE).asPrintable()))))
+                        .then(Commands.literal("biome")
+                                .then(Commands.argument("id", ResourceOrTagArgument.resourceOrTag(buildContext, Registries.BIOME))
+                                        .executes(ctx -> setSpawnType(ctx.getSource(), "biome",
+                                                ResourceOrTagArgument.getResourceOrTag(ctx, "id", Registries.BIOME).asPrintable()))))
+                        .then(Commands.literal("offset")
+                                .then(Commands.argument("blocks", IntegerArgumentType.integer(0))
+                                        .executes(WorldResetCommand::setSpawnOffset)))
+                        .then(Commands.literal("require_surface")
+                                .then(Commands.argument("value", BoolArgumentType.bool())
+                                        .executes(WorldResetCommand::setRequireSurface))));
+    }
+
     }
 
     private static int reloadConfig(CommandSourceStack source) {
@@ -61,6 +81,34 @@ public final class WorldResetCommand {
         long seed = LongArgumentType.getLong(ctx, "seed");
         ConfigManager.config().seed = String.valueOf(seed);
         ConfigManager.save();
+        return 1;
+    }
+
+    private static int setSpawnType(CommandSourceStack source, String type, String target) {
+        ConfigManager.config().spawnNear.type = type;
+        ConfigManager.config().spawnNear.target = target;
+        ConfigManager.save();
+        if (type.equals("none")) {
+            source.sendSuccess(() -> Component.literal("Spawn near disabled."), false);
+        } else {
+            source.sendSuccess(() -> Component.literal("Spawn near set to " + type + ": " + target), false);
+        }
+        return 1;
+    }
+
+    private static int setSpawnOffset(CommandContext<CommandSourceStack> ctx) {
+        int blocks = IntegerArgumentType.getInteger(ctx, "blocks");
+        ConfigManager.config().spawnNear.offset = blocks;
+        ConfigManager.save();
+        ctx.getSource().sendSuccess(() -> Component.literal("Spawn offset set to " + blocks + " blocks."), false);
+        return 1;
+    }
+
+    private static int setRequireSurface(CommandContext<CommandSourceStack> ctx) {
+        boolean value = BoolArgumentType.getBool(ctx, "value");
+        ConfigManager.config().spawnNear.requireSurface = value;
+        ConfigManager.save();
+        ctx.getSource().sendSuccess(() -> Component.literal("Require surface set to " + value + "."), false);
         return 1;
     }
 }

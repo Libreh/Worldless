@@ -184,9 +184,9 @@ public class ResetManager {
         file.delete();
     }
 
-    private void completeWorldReset(long seed) {
+    private void postReset() {
         fountainPlayers.clear();
-        setServerSpawn();
+        BlockPos customSpawn = findAndSetSpawn();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             playerManager.updatePlayer(player);
         }
@@ -195,18 +195,128 @@ public class ResetManager {
 
     private void setServerSpawn() {
         var overworld = server.overworld();
-
-        ServerLevelData serverLevelData = server.getWorldData().overworldData();
-
-        WorldOptions worldOptions = server.getWorldData().worldGenOptions();
-        boolean debug = server.getWorldData().isDebugWorld();
-
-        MinecraftServer.setInitialSpawn(overworld, serverLevelData, worldOptions.generateBonusChest(), debug, server.levelLoadListener);
+            if (customSpawn != null) {
+                var overworld = server.overworld();
+                player.teleportTo(overworld,
+                        customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
+                        Set.of(), 0.0F, 0.0F, true);
+            } else {
+                playerManager.teleportToOverworldSpawn(player);
+            }
+            PlayerReset.applyConfiguredResets(player);
+        }
     }
 
-//    private void resetEnderDragonFight(long seed) {
-//        server.getWorldData().setEndDragonFightData(EndDragonFight.Data.DEFAULT);
-//        ServerLevel endWorld = server.getLevel(Level.END);
-//        endWorld.setDragonFight(new EndDragonFight(endWorld, seed, server.getWorldData().endDragonFightData()));
-//    }
+    @Nullable
+    private BlockPos findAndSetSpawn() {
+        var overworld = server.overworld();
+
+        var spawnNear = ConfigManager.config().spawnNear;
+        if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
+            BlockPos located = null;
+            BlockPos searchOrigin = BlockPos.ZERO;
+
+            for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
+                BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
+                if (candidate == null) break;
+
+                if (spawnNear.requireSurface) {
+                    overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
+                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
+                    if (candidate.getY() < surfaceY - 10) {
+                        WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
+                                spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
+                                attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
+                        double angle = attempt * (Math.PI / 2);
+                        searchOrigin = new BlockPos(
+                                (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
+                                0,
+                                (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
+                        continue;
+                    }
+                }
+
+                located = candidate;
+                break;
+            }
+
+            if (located != null) {
+                int spawnX = located.getX();
+                int spawnZ = located.getZ();
+                if (spawnNear.offset > 0) {
+                    double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
+                    spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
+                    spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
+                }
+                BlockPos spawnPos = SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
+                if (spawnPos == null) {
+                    overworld.getChunk(spawnX >> 4, spawnZ >> 4);
+                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
+                    spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
+                }
+                server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
+                WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
+                return spawnPos;
+            }
+            WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
+                    spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
+        }
+
+        BlockPos spawnPos = SpawnFinder.findSpawn(overworld);
+        server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
+        WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
+        return null;
+    }
+
+    @Nullable
+    private BlockPos findSpawnTarget(ServerLevel overworld, Config.SpawnNear spawnNear, BlockPos searchOrigin) {
+        if (spawnNear.type.equals("structure")) {
+            var registry = overworld.registryAccess().lookupOrThrow(Registries.STRUCTURE);
+            HolderSet<Structure> holderSet;
+            if (spawnNear.target.startsWith("#")) {
+                TagKey<Structure> tagKey = TagKey.create(Registries.STRUCTURE, Identifier.parse(spawnNear.target.substring(1)));
+                Optional<HolderSet.Named<Structure>> tag = registry.get(tagKey);
+                if (tag.isEmpty()) {
+                    WorldReset.LOGGER.warn("Unknown structure tag: {}", spawnNear.target);
+                    return null;
+                }
+                holderSet = tag.get();
+            } else {
+                Optional<Holder.Reference<Structure>> holder = registry.get(ResourceKey.create(Registries.STRUCTURE, Identifier.parse(spawnNear.target)));
+                if (holder.isEmpty()) {
+                    WorldReset.LOGGER.warn("Unknown structure: {}", spawnNear.target);
+                    return null;
+                }
+                holderSet = HolderSet.direct(holder.get());
+            }
+            int radiusChunks = Math.min(SPAWN_SEARCH_MAX_DISTANCE / 16, 500);
+            Pair<BlockPos, Holder<Structure>> result = overworld.getChunkSource().getGenerator()
+                .findNearestMapStructure(overworld, holderSet, searchOrigin, radiusChunks, false);
+            if (result == null) return null;
+
+            BlockPos pos = result.getFirst();
+            var chunk = overworld.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
+            StructureStart start = chunk.getAllStarts().get(result.getSecond().value());
+            if (start != null && start.isValid()) {
+                return new BlockPos(pos.getX(), start.getBoundingBox().maxY(), pos.getZ());
+            }
+            return pos;
+
+        } else if (spawnNear.type.equals("biome")) {
+            Predicate<Holder<Biome>> predicate;
+            if (spawnNear.target.startsWith("#")) {
+                TagKey<Biome> tagKey = TagKey.create(Registries.BIOME, Identifier.parse(spawnNear.target.substring(1)));
+                predicate = h -> h.is(tagKey);
+            } else {
+                ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, Identifier.parse(spawnNear.target));
+                predicate = h -> h.is(biomeKey);
+            }
+            Pair<BlockPos, Holder<Biome>> result = overworld.findClosestBiome3d(
+                predicate, searchOrigin, SPAWN_SEARCH_MAX_DISTANCE, 32, 64
+            );
+            return result != null ? result.getFirst() : null;
+        }
+
+        return null;
+    }
 } 

@@ -20,6 +20,26 @@ public class Config {
     @SerializedName("seed")
     public String seed = "random";
 
+    @SerializedName("spawn_near")
+    public SpawnNear spawnNear = new SpawnNear();
+
+    @SerializedName("reset_on_start")
+    public ResetOnStart resetOnStart = new ResetOnStart();
+
+    public static class SpawnNear {
+        @SerializedName("type")
+        public String type = "none";
+
+        @SerializedName("target")
+        public String target = "";
+
+        @SerializedName("offset")
+        public int offset = 0;
+
+        @SerializedName("require_surface")
+        public boolean requireSurface = false;
+    }
+
     public static class StopTimerOn {
         @SerializedName("end_fountain_enter")
         public boolean endFountainEnter = true;
