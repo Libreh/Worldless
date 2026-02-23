@@ -23,8 +23,8 @@ public class Config {
     @SerializedName("spawn_near")
     public SpawnNear spawnNear = new SpawnNear();
 
-    @SerializedName("reset_on_start")
-    public ResetOnStart resetOnStart = new ResetOnStart();
+    @SerializedName("reset_on_load")
+    public ResetOnLoad resetOnLoad = new ResetOnLoad();
 
     public static class SpawnNear {
         @SerializedName("type")
@@ -38,6 +38,26 @@ public class Config {
 
         @SerializedName("require_surface")
         public boolean requireSurface = false;
+    }
+
+    public static class ResetOnLoad {
+        @SerializedName("player_state")
+        public boolean playerState = false;
+
+        @SerializedName("hunger")
+        public boolean hunger = false;
+
+        @SerializedName("statistics")
+        public boolean statistics = false;
+
+        @SerializedName("advancements")
+        public boolean advancements = false;
+
+        @SerializedName("progression")
+        public boolean progression = false;
+
+        @SerializedName("attributes")
+        public boolean attributes = false;
     }
 
     public static class StopTimerOn {
