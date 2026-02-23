@@ -1,20 +1,42 @@
 package me.libreh.worldreset.command;
 
 import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.arguments.BoolArgumentType;
+import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.LongArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.util.TimeUtil;
 import net.minecraft.ChatFormatting;
+import net.minecraft.commands.CommandBuildContext;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.commands.arguments.ResourceOrTagArgument;
+import net.minecraft.commands.arguments.ResourceOrTagKeyArgument;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 
 public final class WorldResetCommand {
-    public static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        dispatcher.register(Commands.literal("worldreset")
+    private static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
+            o -> Component.literal("Invalid structure: " + o));
+
+    public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
+        dispatcher.register(build("worldreset", buildContext));
+        dispatcher.register(build("wr", buildContext));
+    }
+
+    private static LiteralArgumentBuilder<CommandSourceStack> build(String name, CommandBuildContext buildContext) {
+        return Commands.literal(name)
+                .then(Commands.literal("reset")
+                        .requires(src -> WorldReset.hasPermission(src, "reset"))
+                        .executes(ctx -> resetWorlds(""))
+                        .then(Commands.argument("seed", StringArgumentType.word())
+                                .suggests((ctx, builder) -> builder.suggest("random").buildFuture())
+                                .executes(ctx -> resetWorlds(StringArgumentType.getString(ctx, "seed")))))
                 .then(Commands.literal("reload")
                         .requires(src -> WorldReset.hasPermission(src, "reload"))
                         .executes(ctx -> reloadConfig(ctx.getSource())))
@@ -29,7 +51,6 @@ public final class WorldResetCommand {
                         .requires(src -> WorldReset.hasPermission(src, "seed"))
                         .then(Commands.argument("seed", LongArgumentType.longArg())
                                 .executes(WorldResetCommand::setSeed)))
-        );
                 .then(Commands.literal("spawn")
                         .requires(src -> WorldReset.hasPermission(src, "spawn"))
                         .then(Commands.literal("none")
@@ -50,6 +71,9 @@ public final class WorldResetCommand {
                                         .executes(WorldResetCommand::setRequireSurface))));
     }
 
+    private static int resetWorlds(String seed) {
+        WorldReset.worlds().resetWorlds(seed);
+        return 1;
     }
 
     private static int reloadConfig(CommandSourceStack source) {

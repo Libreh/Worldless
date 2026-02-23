@@ -14,25 +14,25 @@ import net.minecraft.sounds.SoundSource;
 public class CountdownManager {
     private static final int TICKS_PER_SECOND = 20;
     private static final int COUNTDOWN_SOUND_THRESHOLD = 10;
-    private static final int SECONDS_OFFSET = 39;
+    private static final int TICKS_OFFSET = 39;
 
     private final MinecraftServer server;
     private boolean isCountdownActive;
     private int ticks;
-    private int worldTimer;
-    private int resetTimer;
+    private int remainingTicks;
+    private int initialTicks;
 
     public CountdownManager(MinecraftServer server) {
         this.server = server;
     }
 
     public void startCountdown(long seconds) {
-        this.resetTimer = (int) (seconds * TICKS_PER_SECOND) + SECONDS_OFFSET;
+        this.initialTicks = (int) (seconds * TICKS_PER_SECOND) + TICKS_OFFSET;
         continueCountdown();
     }
 
     public void continueCountdown() {
-        this.worldTimer = resetTimer;
+        this.remainingTicks = initialTicks;
         this.isCountdownActive = true;
     }
 
@@ -41,14 +41,14 @@ public class CountdownManager {
     }
 
     public boolean isCountdownActive() {
-        return isCountdownActive && WorldReset.worlds().state() == WorldState.LOAD;
+        return isCountdownActive && WorldReset.worlds().state() == WorldState.LOADED;
     }
 
     public void tick() {
         if (++ticks < TICKS_PER_SECOND - 1) return;
         ticks = 0;
-        worldTimer -= TICKS_PER_SECOND;
-        if (worldTimer <= 0) {
+        remainingTicks -= TICKS_PER_SECOND;
+        if (remainingTicks <= 0) {
             isCountdownActive = false;
             return;
         }
@@ -64,7 +64,7 @@ public class CountdownManager {
     }
 
     private void updateTimerDisplay() {
-        int totalSeconds = worldTimer / TICKS_PER_SECOND;
+        int totalSeconds = remainingTicks / TICKS_PER_SECOND;
         int minutes = totalSeconds / 60;
         int seconds = totalSeconds % 60;
         String timeString = String.format("%02d:%02d", minutes, seconds);

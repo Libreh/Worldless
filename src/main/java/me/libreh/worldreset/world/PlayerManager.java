@@ -22,10 +22,9 @@ public class PlayerManager {
         this.taskExecutor = taskExecutor;
     }
 
-    public void updatePlayer(ServerPlayer player) {
+    public void preparePlayerForReset(ServerPlayer player) {
         if (player.isAlive()) {
             teleportToLobby(player);
-            teleportToOverworldSpawn(player);
         } else {
             respawnPlayer(player);
         }
@@ -39,7 +38,7 @@ public class PlayerManager {
         }
         player.teleportTo(
                 lobbyWorld,
-                0, 1024, 0,
+                1, 65, 1,
                 Set.of(),
                 0.0F, 0.0F,
                 true
@@ -67,10 +66,10 @@ public class PlayerManager {
         connection.handleClientCommand(
                 new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN)
         );
-        taskExecutor.execute(() -> updatePlayer(connection.player));
+        taskExecutor.execute(() -> preparePlayerForReset(connection.player));
     }
 
-    public boolean shouldStop(ServerPlayer player) {
+    public boolean shouldStopCountdown(ServerPlayer player) {
         if (!ConfigManager.config().stopTimerOn.endFountainEnter) return false;
         int fountainPlayersCount = WorldReset.worlds().fountainPlayers.size();
         int playerCount = player.level().getServer().getPlayerList().getPlayers().size();

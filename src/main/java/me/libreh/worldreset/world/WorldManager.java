@@ -8,16 +8,17 @@ import java.util.Set;
 import java.util.UUID;
 
 public class WorldManager {
-    private boolean shouldCancelSaving = true;
+    private final ServerTaskExecutor taskExecutor;
+    private boolean cancelSaving = true;
     public final Set<UUID> fountainPlayers = new HashSet<>();
     private final CountdownManager countdownManager;
     private final PlayerManager playerManager;
     private final ResetManager resetManager;
-    private WorldState state = WorldState.LOAD;
+    private WorldState state = WorldState.LOADED;
 
     public WorldManager(MinecraftServer server, LobbyWorld lobbyWorld) {
-        ServerTaskExecutor taskExecutor = new ServerTaskExecutor(server);
-        this.playerManager = new PlayerManager(server, taskExecutor);
+        this.taskExecutor = new ServerTaskExecutor(server);
+        this.playerManager = new PlayerManager(server, this.taskExecutor);
         this.countdownManager = new CountdownManager(server);
         this.resetManager = new ResetManager(
             server, playerManager, lobbyWorld, fountainPlayers
@@ -37,13 +38,13 @@ public class WorldManager {
     }
 
     public void resetWorlds(String seed) {
-        state = WorldState.RESET;
+        state = WorldState.RESETTING;
         resetManager.resetWorlds(seed);
-        state = WorldState.LOAD;
+        state = WorldState.LOADED;
     }
 
     public boolean shouldStop(ServerPlayer player) {
-        return playerManager.shouldStop(player);
+        return playerManager.shouldStopCountdown(player);
     }
 
     public void setCountdownTimer(long seconds) {
@@ -55,11 +56,11 @@ public class WorldManager {
     }
 
     public boolean isCancelSaving() {
-        return shouldCancelSaving;
+        return cancelSaving;
     }
 
     public void setCancelSaving(boolean shouldCancelSaving) {
-        this.shouldCancelSaving = shouldCancelSaving;
+        this.cancelSaving = shouldCancelSaving;
     }
 
     public WorldState state() {

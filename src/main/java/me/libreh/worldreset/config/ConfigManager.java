@@ -12,7 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class ConfigManager {
-    public static final int VERSION = 3;
+    public static final int VERSION = 4;
     private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir();
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("worldreset.json");
     private static final Path OLD_CONFIG_PATH = CONFIG_DIR.resolve("worldless.json");
@@ -87,6 +87,8 @@ public class ConfigManager {
                 CONFIG.stopTimerOn.dragonDeath = dragonDeath;
             } else if (configVersion == 2) {
                 WorldReset.LOGGER.info("Migrating config from version 2 to version " + VERSION);
+            } else if (configVersion == 3) {
+                WorldReset.LOGGER.info("Migrating config from version 3 to version " + VERSION);
             }
         }
     }

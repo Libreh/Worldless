@@ -1,29 +1,45 @@
 package me.libreh.worldreset.world;
 
+import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
+import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.mixin.world.BlockableEventLoopAccessor;
 import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
 import me.libreh.worldreset.mixin.world.PrimaryLevelDataAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
 import me.libreh.worldreset.util.SeedUtil;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.HolderSet;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.raid.Raid;
+import net.minecraft.world.level.biome.Biome;
 import net.minecraft.world.level.dimension.end.EndDragonFight;
-import net.minecraft.world.level.levelgen.WorldOptions;
-import net.minecraft.world.level.storage.ServerLevelData;
+import net.minecraft.world.level.levelgen.Heightmap;
+import net.minecraft.world.level.levelgen.structure.Structure;
+import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.scores.Objective;
+import org.jetbrains.annotations.Nullable;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.Predicate;
 
 public class ResetManager {
     private static final String[] WORLD_DATA_DIRECTORIES = {"region", "poi", "entities"};
+    private static final int SPAWN_SEARCH_MAX_DISTANCE = 10000; // blocks
+    private static final int SPAWN_SEARCH_RETRIES = 10;
     private final MinecraftServer server;
     private final PlayerManager playerManager;
     private final LobbyWorld lobbyWorld;
@@ -37,20 +53,21 @@ public class ResetManager {
     }
 
     public void resetWorlds(String seed) {
-        String seedString = seed;
-        if (seedString.isEmpty()) {
-            seedString = ConfigManager.config().seed;
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            playerManager.preparePlayerForReset(player);
         }
+
+        String seedString = seed.isEmpty() ? ConfigManager.config().seed : seed;
         long seedLong = SeedUtil.parseSeed(seedString);
 
         tickKeepAlive();
         clearScoreboardObjectives();
-        invalidateRaids();
+        stopAllRaids();
 
         setSaving(true);
         try {
             saveWorldData();
-            cancelTasks();
+            dropAllTasks();
             WorldReset.worlds().setCancelSaving(true);
             closeAndDeleteWorlds();
             lobbyWorld.prepareLobbyFiles(server);
@@ -60,7 +77,7 @@ public class ResetManager {
             setSaving(false);
             WorldReset.worlds().setCancelSaving(false);
         }
-        completeWorldReset(seedLong);
+        postReset();
     }
 
     private void clearScoreboardObjectives() {
@@ -74,7 +91,7 @@ public class ResetManager {
         }
     }
 
-    private void invalidateRaids() {
+    private void stopAllRaids() {
         for (ServerLevel world : server.getAllLevels()) {
             RaidsAccessor raidManagerAccessor = (RaidsAccessor) world.getRaids();
             Int2ObjectMap<Raid> raids = raidManagerAccessor.getRaidMap();
@@ -109,7 +126,7 @@ public class ResetManager {
         tickKeepAlive();
     }
 
-    private void cancelTasks() {
+    private void dropAllTasks() {
         BlockableEventLoopAccessor blockableEventLoopAccessor = (BlockableEventLoopAccessor) server;
         blockableEventLoopAccessor.invokeDropAllTasks();
     }
@@ -188,13 +205,6 @@ public class ResetManager {
         fountainPlayers.clear();
         BlockPos customSpawn = findAndSetSpawn();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            playerManager.updatePlayer(player);
-        }
-//        resetEnderDragonFight(seed);
-    }
-
-    private void setServerSpawn() {
-        var overworld = server.overworld();
             if (customSpawn != null) {
                 var overworld = server.overworld();
                 player.teleportTo(overworld,

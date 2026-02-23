@@ -38,11 +38,11 @@ public final class WorldReset implements ModInitializer {
 
         LobbyWorld lobbyWorld = new LobbyWorld();
         if (FabricLoader.getInstance().getEnvironmentType() == EnvType.SERVER) {
-            copyDatapack(lobbyWorld);
+            installDatapack(lobbyWorld);
         }
 
 		CommandRegistrationCallback.EVENT.register((dispatcher, access, environment) -> {
-            WorldResetCommand.register(dispatcher);
+            WorldResetCommand.register(dispatcher, access);
             ResetCommand.register(dispatcher);
         });
 		ServerLifecycleEvents.SERVER_STARTED.register(server ->
@@ -55,9 +55,9 @@ public final class WorldReset implements ModInitializer {
         return Permissions.check(source, WorldReset.MOD_ID + "." + permission, PermissionLevel.GAMEMASTERS);
     }
 
-    private void copyDatapack(LobbyWorld lobbyWorld) {
+    private void installDatapack(LobbyWorld lobbyWorld) {
         try {
-            String levelName = readLevelName();
+            String levelName = getLevelNameFromProperties();
             Path datapackPath = FabricLoader.getInstance().getGameDir().resolve(levelName + "/datapacks/worldreset.zip");
             LOGGER.debug("Installing the {} datapack in {}", MOD_ID, datapackPath);
             lobbyWorld.copyDataPack(datapackPath);
@@ -66,7 +66,7 @@ public final class WorldReset implements ModInitializer {
         }
     }
 
-    private String readLevelName() {
+    private String getLevelNameFromProperties() {
         try {
             Path serverProperties = FabricLoader.getInstance().getGameDir().resolve("server.properties");
             List<String> lines = Files.readAllLines(serverProperties);

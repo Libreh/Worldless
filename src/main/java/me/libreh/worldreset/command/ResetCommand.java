@@ -1,7 +1,7 @@
 package me.libreh.worldreset.command;
 
 import com.mojang.brigadier.CommandDispatcher;
-import com.mojang.brigadier.arguments.LongArgumentType;
+import com.mojang.brigadier.arguments.StringArgumentType;
 import me.libreh.worldreset.WorldReset;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -11,10 +11,11 @@ public class ResetCommand {
         dispatcher.register(Commands.literal("reset")
                 .requires(src -> WorldReset.hasPermission(src, "reset"))
                 .executes(context -> resetWorlds(""))
-                .then(Commands.argument("seed", LongArgumentType.longArg())
+                .then(Commands.argument("seed", StringArgumentType.word())
+                        .suggests((context, builder) -> builder.suggest("random").buildFuture())
                         .executes(context -> {
-                            long seed = LongArgumentType.getLong(context, "seed");
-                            resetWorlds(String.valueOf(seed));
+                            String seed = StringArgumentType.getString(context, "seed");
+                            resetWorlds(seed);
                             return 1;
                         }))
         );
