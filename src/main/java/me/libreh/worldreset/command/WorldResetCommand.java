@@ -49,7 +49,8 @@ public final class WorldResetCommand {
                         .executes(ctx -> stopTimer()))
                 .then(Commands.literal("seed")
                         .requires(src -> WorldReset.hasPermission(src, "seed"))
-                        .then(Commands.argument("seed", LongArgumentType.longArg())
+                        .then(Commands.argument("seed", StringArgumentType.word())
+                                .suggests((ctx, builder) -> builder.suggest("random").buildFuture())
                                 .executes(WorldResetCommand::setSeed)))
                 .then(Commands.literal("spawn")
                         .requires(src -> WorldReset.hasPermission(src, "spawn"))
@@ -102,8 +103,8 @@ public final class WorldResetCommand {
     }
 
     private static int setSeed(CommandContext<CommandSourceStack> ctx) {
-        long seed = LongArgumentType.getLong(ctx, "seed");
-        ConfigManager.config().seed = String.valueOf(seed);
+        String seed = StringArgumentType.getString(ctx, "seed");
+        ConfigManager.config().seed = seed;
         ConfigManager.save();
         return 1;
     }
