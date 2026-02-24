@@ -13,20 +13,52 @@ All permissions are available with operator as well
 ```json5
 {
   // Don't touch!
-  "config_version": 2,
+  "config_version": 4,
   // Enable timer countdown sounds
   "countdown_sounds": true,
   // Enable restart chat message
   "restart_message": true,
   // Stop the timer if either condition is met
-  "timer_stop_on": {
+  "stop_timer_on": {
     // All players have to enter
-    "end_fountain_enter": false,
+    "end_fountain_enter": true,
     // Has to die "naturally" (no /kill)
-    "dragon_death": true
+    "dragon_death": false
   },
-  // Supports long or random seed
-  "seed": "random"
+  // Supports long, string, or "random" seed
+  "seed": "random",
+  // Configure spawn location
+  "spawn_near": {
+    // Type of spawn: "structure" or "biome"
+    "type": "structure",
+    // Target structure or biome (e.g., "minecraft:stronghold", "minecraft:plains")
+    "target": "minecraft:stronghold",
+    // Block offset from the target location
+    "offset": 0,
+    // Whether to require a surface block for spawning
+    "require_surface": true
+  },
+  // Reset player state on world reset
+  "reset_on_start": {
+    // Remove all potion effects
+    "effects": true,
+    // Reset health, air supply, fire, and velocity
+    "health": true,
+    // Reset food level and saturation
+    "hunger": true,
+    // Reset all game statistics
+    "statistics": true,
+    // Reset all advancements
+    "advancements": true,
+    // Reset XP levels, points, and score
+    "experience": true,
+    // Clear inventory and ender chest contents
+    "inventory": true,
+    // Reset recipe knowledge
+    "recipes": true,
+    // Reset player attributes (health boost, speed, etc.)
+    "attributes": true
+  }
 }
 ```
 

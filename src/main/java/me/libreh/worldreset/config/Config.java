@@ -41,8 +41,11 @@ public class Config {
     }
 
     public static class ResetOnLoad {
-        @SerializedName("player_state")
-        public boolean playerState = false;
+        @SerializedName("effects")
+        public boolean effects = false;
+
+        @SerializedName("health")
+        public boolean health = false;
 
         @SerializedName("hunger")
         public boolean hunger = false;
@@ -53,8 +56,14 @@ public class Config {
         @SerializedName("advancements")
         public boolean advancements = false;
 
-        @SerializedName("progression")
-        public boolean progression = false;
+        @SerializedName("experience")
+        public boolean experience = false;
+
+        @SerializedName("inventory")
+        public boolean inventory = false;
+
+        @SerializedName("recipes")
+        public boolean recipes = false;
 
         @SerializedName("attributes")
         public boolean attributes = false;
