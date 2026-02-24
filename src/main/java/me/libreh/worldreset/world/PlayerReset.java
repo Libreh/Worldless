@@ -29,7 +29,7 @@ public class PlayerReset {
         player.setSharedFlagOnFire(false);
         player.setAirSupply(player.getMaxAirSupply());
         player.setHealth(player.getMaxHealth());
-
+        player.setDeltaMovement(Vec3.ZERO);
     }
 
     private static void resetHunger(ServerPlayer player) {
@@ -70,7 +70,6 @@ public class PlayerReset {
         player.getInventory().clearContent();
         player.getEnderChestInventory().clearContent();
         player.resetRecipes(player.level().getServer().getRecipeManager().getRecipes());
-        player.setDeltaMovement(Vec3.ZERO);
     }
 
     private static void resetAttributes(ServerPlayer player) {
