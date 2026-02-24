@@ -8,10 +8,14 @@ public final class SeedUtil {
             return RandomSupport.generateUniqueSeed();
         }
 
+        if (seedString.isEmpty()) {
+            return 0L;
+        }
+
         try {
             return Long.parseLong(seedString);
         } catch (NumberFormatException e) {
-            throw new IllegalArgumentException("Invalid seed: '" + seedString + "'. Must be 'random' or a valid long value");
+            return seedString.hashCode();
         }
     }
 }
