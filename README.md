@@ -39,7 +39,7 @@ All permissions are available with operator as well
     "require_surface": true
   },
   // Reset player state on world reset
-  "reset_on_start": {
+  "reset_on_load": {
     // Remove all potion effects
     "effects": true,
     // Reset health, air supply, fire, and velocity
