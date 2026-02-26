@@ -67,6 +67,9 @@ public class Config {
 
         @SerializedName("attributes")
         public boolean attributes = false;
+
+        @SerializedName("time_of_day")
+        public int timeOfDay = -1;
     }
 
     public static class StopTimerOn {

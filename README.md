@@ -57,7 +57,10 @@ All permissions are available with operator as well
     // Reset recipe knowledge
     "recipes": true,
     // Reset player attributes (health boost, speed, etc.)
-    "attributes": true
+    "attributes": true,
+    // Set time of day in game ticks (0-24000, -1 to disable)
+    // Common values: 0 (dawn), 6000 (noon), 12000 (dusk), 18000 (midnight)
+    "time_of_day": -1
   }
 }
 ```

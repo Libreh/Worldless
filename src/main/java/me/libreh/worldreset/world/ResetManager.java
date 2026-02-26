@@ -204,6 +204,7 @@ public class ResetManager {
     private void postReset() {
         fountainPlayers.clear();
         BlockPos customSpawn = findAndSetSpawn();
+        setTimeOfDay();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (customSpawn != null) {
                 var overworld = server.overworld();
@@ -214,6 +215,15 @@ public class ResetManager {
                 playerManager.teleportToOverworldSpawn(player);
             }
             PlayerReset.applyConfiguredResets(player);
+        }
+    }
+
+    private void setTimeOfDay() {
+        int timeOfDay = ConfigManager.config().resetOnLoad.timeOfDay;
+        if (timeOfDay >= 0) {
+            var overworld = server.overworld();
+            overworld.setDayTime(timeOfDay);
+            WorldReset.LOGGER.debug("Set time of day to {}", timeOfDay);
         }
     }
 
