@@ -70,6 +70,9 @@ public class Config {
 
         @SerializedName("time_of_day")
         public int timeOfDay = -1;
+
+        @SerializedName("clear_weather")
+        public boolean clearWeather = false;
     }
 
     public static class StopTimerOn {

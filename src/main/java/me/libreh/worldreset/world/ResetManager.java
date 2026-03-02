@@ -227,6 +227,13 @@ public class ResetManager {
         }
     }
 
+    private void clearWeather() {
+        if (ConfigManager.config().resetOnLoad.clearWeather) {
+            server.overworld().setWeatherParameters(6000, 0, false, false);
+            WorldReset.LOGGER.debug("Cleared weather");
+        }
+    }
+
     @Nullable
     private BlockPos findAndSetSpawn() {
         var overworld = server.overworld();
