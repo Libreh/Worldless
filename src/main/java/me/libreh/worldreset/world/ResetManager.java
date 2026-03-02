@@ -5,7 +5,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
-import me.libreh.worldreset.mixin.world.BlockableEventLoopAccessor;
 import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
 import me.libreh.worldreset.mixin.world.PrimaryLevelDataAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
@@ -17,6 +16,7 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
@@ -67,7 +67,7 @@ public class ResetManager {
         setSaving(true);
         try {
             saveWorldData();
-            dropAllTasks();
+            server.dropAllTasks();
             WorldReset.worlds().setCancelSaving(true);
             closeAndDeleteWorlds();
             lobbyWorld.prepareLobbyFiles(server);
@@ -126,11 +126,6 @@ public class ResetManager {
         tickKeepAlive();
     }
 
-    private void dropAllTasks() {
-        BlockableEventLoopAccessor blockableEventLoopAccessor = (BlockableEventLoopAccessor) server;
-        blockableEventLoopAccessor.invokeDropAllTasks();
-    }
-
     private void closeAndDeleteWorlds() {
         MinecraftServerAccessor serverAccessor = (MinecraftServerAccessor) server;
 
@@ -145,6 +140,10 @@ public class ResetManager {
     private void closeWorld(ServerLevel world) {
         long closeStartTime = System.currentTimeMillis();
         WorldReset.LOGGER.debug("Closing {}...", world.dimension().registry());
+
+        world.getChunkSource().deactivateTicketsOnClosing();
+        ServerChunkCache.MainThreadExecutor mainThreadProcessor = world.getChunkSource().mainThreadProcessor;
+        mainThreadProcessor.dropAllTasks();
 
         try {
             world.close();
@@ -205,6 +204,7 @@ public class ResetManager {
         fountainPlayers.clear();
         BlockPos customSpawn = findAndSetSpawn();
         setTimeOfDay();
+        clearWeather();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (customSpawn != null) {
                 var overworld = server.overworld();
