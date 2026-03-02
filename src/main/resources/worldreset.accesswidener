@@ -1,3 +1,4 @@
 accessWidener v2 named
 
 accessible field net/minecraft/server/MinecraftServer levelLoadListener Lnet/minecraft/server/level/progress/LevelLoadListener;
+accessible method net/minecraft/util/thread/BlockableEventLoop dropAllTasks ()V
