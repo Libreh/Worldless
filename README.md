@@ -59,7 +59,6 @@ All permissions are available with operator as well
     // Reset player attributes (health boost, speed, etc.)
     "attributes": true,
     // Set time of day in game ticks (0-24000, -1 to disable)
-    // Common values: 0 (dawn), 6000 (noon), 12000 (dusk), 18000 (midnight)
     "time_of_day": -1
   }
 }
@@ -67,5 +66,4 @@ All permissions are available with operator as well
 
 ## Credits
 - [The World Resets every 5 Minutes, Can we beat it?](https://www.youtube.com/watch?v=--IQ56rqYhE) [inspiration]
-
-### If you have any suggestions or found a bug feel free to open an issue! (PRs welcome)
+- [WorldReset (Bukkit plugin)](https://modrinth.com/plugin/worldreset) [inspiration]
