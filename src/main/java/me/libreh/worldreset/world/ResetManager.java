@@ -53,7 +53,7 @@ public class ResetManager {
     }
 
     public void resetWorlds(String seed) {
-        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             playerManager.preparePlayerForReset(player);
         }
 
