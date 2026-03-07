@@ -141,10 +141,6 @@ public class ResetManager {
         long closeStartTime = System.currentTimeMillis();
         WorldReset.LOGGER.debug("Closing {}...", world.dimension().registry());
 
-        world.getChunkSource().deactivateTicketsOnClosing();
-        ServerChunkCache.MainThreadExecutor mainThreadProcessor = world.getChunkSource().mainThreadProcessor;
-        mainThreadProcessor.dropAllTasks();
-
         try {
             world.close();
         } catch (IOException e) {
