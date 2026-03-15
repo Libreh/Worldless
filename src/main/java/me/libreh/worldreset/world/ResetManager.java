@@ -5,10 +5,14 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
-import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
-import me.libreh.worldreset.mixin.world.PrimaryLevelDataAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
 import me.libreh.worldreset.util.SeedUtil;
+import net.casual.arcade.dimensions.ArcadeDimensions;
+import net.casual.arcade.dimensions.level.LevelPersistence;
+import net.casual.arcade.dimensions.level.builder.CustomLevelBuilder;
+import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
+import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
+import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevelsBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -21,7 +25,6 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.dimension.end.EndDragonFight;
 import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
@@ -29,23 +32,21 @@ import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.scores.Objective;
 import org.jetbrains.annotations.Nullable;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.function.Predicate;
 
 public class ResetManager {
-    private static final String[] WORLD_DATA_DIRECTORIES = {"region", "poi", "entities"};
     private static final int SPAWN_SEARCH_MAX_DISTANCE = 10000; // blocks
     private static final int SPAWN_SEARCH_RETRIES = 10;
     private final MinecraftServer server;
+    private final WorldManager worldManager;
     private final PlayerManager playerManager;
     private final LobbyWorld lobbyWorld;
     private final Set<UUID> fountainPlayers;
 
-    public ResetManager(MinecraftServer server, PlayerManager playerManager, LobbyWorld lobbyWorld, Set<UUID> fountainPlayers) {
+    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, LobbyWorld lobbyWorld, Set<UUID> fountainPlayers) {
         this.server = server;
+        this.worldManager = worldManager;
         this.playerManager = playerManager;
         this.lobbyWorld = lobbyWorld;
         this.fountainPlayers = fountainPlayers;
@@ -62,21 +63,45 @@ public class ResetManager {
         tickKeepAlive();
         clearScoreboardObjectives();
         stopAllRaids();
-
-        setSaving(true);
-        try {
-            saveWorldData();
-            server.dropAllTasks();
-            WorldReset.worlds().setCancelSaving(true);
-            closeAndDeleteWorlds();
-            lobbyWorld.prepareLobbyFiles(server);
-            tickKeepAlive();
-            loadNewWorlds(seedLong);
-        } finally {
-            setSaving(false);
-            WorldReset.worlds().setCancelSaving(false);
-        }
+        saveWorldData();
+        deleteGameWorlds();
+        tickKeepAlive();
+        createGameWorlds(seedLong);
         postReset();
+    }
+
+    public void createGameWorlds(long seed) {
+        VanillaLikeLevelsBuilder builder = new VanillaLikeLevelsBuilder();
+        builder.set(VanillaDimension.Overworld, new CustomLevelBuilder()
+            .vanillaDefaults(VanillaDimension.Overworld)
+            .dimensionKey(WorldReset.GAME_OVERWORLD)
+            .seed(seed)
+            .persistence(LevelPersistence.Persistent));
+        builder.set(VanillaDimension.Nether, new CustomLevelBuilder()
+            .vanillaDefaults(VanillaDimension.Nether)
+            .dimensionKey(WorldReset.GAME_NETHER)
+            .seed(seed)
+            .persistence(LevelPersistence.Persistent));
+        builder.set(VanillaDimension.End, new CustomLevelBuilder()
+            .vanillaDefaults(VanillaDimension.End)
+            .dimensionKey(WorldReset.GAME_END)
+            .seed(seed)
+            .persistence(LevelPersistence.Persistent));
+        VanillaLikeLevels levels = builder.build(server);
+        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Overworld));
+        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Nether));
+        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.End));
+        worldManager.setGameWorlds(
+            levels.getOrThrow(VanillaDimension.Overworld),
+            levels.getOrThrow(VanillaDimension.Nether),
+            levels.getOrThrow(VanillaDimension.End)
+        );
+    }
+
+    private void deleteGameWorlds() {
+        ArcadeDimensions.delete(server, worldManager.getGameOverworld());
+        ArcadeDimensions.delete(server, worldManager.getGameNether());
+        ArcadeDimensions.delete(server, worldManager.getGameEnd());
     }
 
     private void clearScoreboardObjectives() {
@@ -91,108 +116,23 @@ public class ResetManager {
     }
 
     private void stopAllRaids() {
-        for (ServerLevel world : server.getAllLevels()) {
+        for (ServerLevel world : List.of(worldManager.getGameOverworld(), worldManager.getGameNether(), worldManager.getGameEnd())) {
             RaidsAccessor raidManagerAccessor = (RaidsAccessor) world.getRaids();
             Int2ObjectMap<Raid> raids = raidManagerAccessor.getRaidMap();
-            for (Raid raid : raids.values()) {
+            for (Raid raid : List.copyOf(raids.values())) {
                 raid.stop();
             }
         }
     }
 
-    private void setSaving(boolean saving) {
-        MinecraftServerAccessor serverAccessor = (MinecraftServerAccessor) server;
-        serverAccessor.setIsSaving(saving);
-    }
-
     private void saveWorldData() {
-        long saveStartTime = System.currentTimeMillis();
-        WorldReset.LOGGER.debug("Saving...");
-
+        WorldReset.LOGGER.debug("Saving player data...");
         server.getPlayerList().saveAll();
-
-        for (ServerLevel world : server.getAllLevels()) {
-            try {
-                world.getDataStorage().saveAndJoin();
-            } catch (Exception e) {
-                WorldReset.LOGGER.error("Error saving persistent state for world {}: {}",
-                        world.dimension().registry(), e.getMessage(), e);
-            }
-        }
-
-        long saveDuration = System.currentTimeMillis() - saveStartTime;
-        WorldReset.LOGGER.debug("Saving completed in {}ms", saveDuration);
-        tickKeepAlive();
-    }
-
-    private void closeAndDeleteWorlds() {
-        MinecraftServerAccessor serverAccessor = (MinecraftServerAccessor) server;
-
-        for (ServerLevel world : server.getAllLevels()) {
-            closeWorld(world);
-            tickKeepAlive();
-            deleteWorldData(serverAccessor, world);
-            tickKeepAlive();
-        }
-    }
-
-    private void closeWorld(ServerLevel world) {
-        long closeStartTime = System.currentTimeMillis();
-        WorldReset.LOGGER.debug("Closing {}...", world.dimension().registry());
-
-        try {
-            world.close();
-        } catch (IOException e) {
-            WorldReset.LOGGER.error("Error closing world {}", world.dimension().registry(), e);
-        }
-
-        long closeDuration = System.currentTimeMillis() - closeStartTime;
-        WorldReset.LOGGER.debug("Closing {} completed in {}ms", world.dimension().registry(), closeDuration);
-    }
-
-    private void deleteWorldData(MinecraftServerAccessor serverAccessor, ServerLevel world) {
-        Path worldDirectory = serverAccessor.getStorageSource().getDimensionPath(world.dimension());
-
-        for (String subDir : WORLD_DATA_DIRECTORIES) {
-            File directory = worldDirectory.resolve(subDir).toFile();
-            if (directory.exists()) {
-                deleteRecursively(directory);
-            }
-        }
-    }
-
-    private void loadNewWorlds(long seed) {
-        long loadStartTime = System.currentTimeMillis();
-        WorldReset.LOGGER.debug("Loading new worlds...");
-
-        PrimaryLevelDataAccessor levelPropertiesAccessor = (PrimaryLevelDataAccessor) server.getWorldData();
-        server.getWorldData().setEndDragonFightData(EndDragonFight.Data.DEFAULT);
-        levelPropertiesAccessor.setWorldOptions(
-                server.getWorldData().worldGenOptions().withSeed(OptionalLong.of(seed))
-        );
-
-        MinecraftServerAccessor serverAccessor = (MinecraftServerAccessor) server;
-        serverAccessor.invokeLoadLevel();
-
-        long loadDuration = System.currentTimeMillis() - loadStartTime;
-        WorldReset.LOGGER.debug("Loading new worlds completed in {}ms", loadDuration);
         tickKeepAlive();
     }
 
     private void tickKeepAlive() {
         server.tickConnection();
-    }
-
-    private void deleteRecursively(File file) {
-        if (file.isDirectory()) {
-            File[] children = file.listFiles();
-            if (children != null) {
-                for (File child : children) {
-                    deleteRecursively(child);
-                }
-            }
-        }
-        file.delete();
     }
 
     private void postReset() {
@@ -202,8 +142,8 @@ public class ResetManager {
         clearWeather();
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (customSpawn != null) {
-                var overworld = server.overworld();
-                player.teleportTo(overworld,
+                var gameOverworld = worldManager.getGameOverworld();
+                player.teleportTo(gameOverworld,
                         customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
                         Set.of(), 0.0F, 0.0F, true);
             } else {
@@ -216,22 +156,21 @@ public class ResetManager {
     private void setTimeOfDay() {
         int timeOfDay = ConfigManager.config().resetOnLoad.timeOfDay;
         if (timeOfDay >= 0) {
-            var overworld = server.overworld();
-            overworld.setDayTime(timeOfDay);
+            worldManager.getGameOverworld().setDayTime(timeOfDay);
             WorldReset.LOGGER.debug("Set time of day to {}", timeOfDay);
         }
     }
 
     private void clearWeather() {
         if (ConfigManager.config().resetOnLoad.clearWeather) {
-            server.overworld().setWeatherParameters(6000, 0, false, false);
+            worldManager.getGameOverworld().setWeatherParameters(0, 0, false, false);
             WorldReset.LOGGER.debug("Cleared weather");
         }
     }
 
     @Nullable
     private BlockPos findAndSetSpawn() {
-        var overworld = server.overworld();
+        var overworld = worldManager.getGameOverworld();
 
         var spawnNear = ConfigManager.config().spawnNear;
         if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
@@ -341,4 +280,4 @@ public class ResetManager {
 
         return null;
     }
-} 
+}

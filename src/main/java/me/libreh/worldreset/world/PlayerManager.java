@@ -3,12 +3,11 @@ package me.libreh.worldreset.world;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.storage.LevelData;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Set;
@@ -23,15 +22,14 @@ public class PlayerManager {
     }
 
     public void preparePlayerForReset(ServerPlayer player) {
-        if (player.isAlive()) {
-            teleportToLobby(player);
-        } else {
+        if (!player.isAlive()) {
             respawnPlayer(player);
         }
+        teleportToLobby(player);
     }
 
     public void teleportToLobby(ServerPlayer player) {
-        ServerLevel lobbyWorld = server.getLevel(ResourceKey.create(Registries.DIMENSION, WorldReset.LOBBY_WORLD_ID));
+        ServerLevel lobbyWorld = server.getLevel(WorldReset.LOBBY_WORLD);
         if (lobbyWorld == null) {
             WorldReset.LOGGER.warn("Lobby world not found");
             return;
@@ -46,7 +44,7 @@ public class PlayerManager {
     }
 
     public void teleportToOverworldSpawn(ServerPlayer player) {
-        ServerLevel overworld = server.overworld();
+        var overworld = WorldReset.worlds().getGameOverworld();
         BlockPos worldSpawnPos = overworld.getRespawnData().pos();
         Vec3 spawnPos = player.adjustSpawnLocation(overworld, worldSpawnPos).getBottomCenter();
         player.teleportTo(
@@ -58,6 +56,13 @@ public class PlayerManager {
                 overworld.getRespawnData().pitch(),
                 overworld.getRespawnData().yaw(),
                 true
+        );
+        player.setRespawnPosition(
+                new ServerPlayer.RespawnConfig(
+                        LevelData.RespawnData.of(overworld.dimension(), worldSpawnPos, 0.0F, 0.0F),
+                        true
+                ),
+                false
         );
     }
 

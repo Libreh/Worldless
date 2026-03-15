@@ -18,7 +18,6 @@
           "me.libreh.worldreset.WorldReset"
 		]
 	},
-    "accessWidener" : "worldreset.accesswidener",
 	"mixins": [
       "worldreset.mixins.json"
 	],

@@ -15,10 +15,7 @@ repositories {
 	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
 	// for more information about repositories.
 	maven { url 'https://maven.nucleoid.xyz' }
-}
-
-loom {
-    accessWidenerPath = file("src/main/resources/worldreset.accesswidener")
+	maven { url 'https://maven.supersanta.me/snapshots' }
 }
 
 dependencies {
@@ -31,6 +28,13 @@ dependencies {
 	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
 
 	modImplementation include("me.lucko:fabric-permissions-api:${project.permissions_api_version}")
+
+    include(modImplementation("net.casualchampionships:arcade-dimensions:${project.arcade_version}"))
+
+    include(modImplementation("net.casualchampionships:arcade-event-registry:${project.arcade_version}"))
+    include(modImplementation("net.casualchampionships:arcade-events-server:${project.arcade_version}"))
+    include(modImplementation("net.casualchampionships:arcade-extensions:${project.arcade_version}"))
+    include(modImplementation("net.casualchampionships:arcade-utils:${project.arcade_version}"))
 }
 
 processResources {

@@ -1,5 +1,0 @@
-accessWidener v2 named
-
-accessible field net/minecraft/server/level/ServerChunkCache mainThreadProcessor Lnet/minecraft/server/level/ServerChunkCache$MainThreadExecutor;
-accessible method net/minecraft/util/thread/BlockableEventLoop dropAllTasks ()V
-accessible class net/minecraft/server/level/ServerChunkCache$MainThreadExecutor

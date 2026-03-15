@@ -13,8 +13,11 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.permissions.PermissionLevel;
+import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -26,6 +29,11 @@ public final class WorldReset implements ModInitializer {
 	public static final String MOD_ID = "worldreset";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Identifier LOBBY_WORLD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "lobby");
+
+	public static final ResourceKey<Level> LOBBY_WORLD = ResourceKey.create(Registries.DIMENSION, LOBBY_WORLD_ID);
+	public static final ResourceKey<Level> GAME_OVERWORLD = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "overworld"));
+	public static final ResourceKey<Level> GAME_NETHER = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "nether"));
+	public static final ResourceKey<Level> GAME_END  = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "the_end"));
 
 	private static WorldManager worldManager;
     public static WorldManager worlds() {

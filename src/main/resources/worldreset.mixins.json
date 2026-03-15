@@ -7,8 +7,7 @@
     "game.EntityMixin",
     "game.LivingEntityMixin",
     "world.MinecraftServerAccessor",
-    "world.MinecraftServerCancelStartRegionMixin",
-    "world.PrimaryLevelDataAccessor",
+    "world.PlayerListMixin",
     "world.RaidsAccessor"
   ],
   "injectors": {
