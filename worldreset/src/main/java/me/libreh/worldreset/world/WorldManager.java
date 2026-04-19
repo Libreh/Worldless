@@ -32,7 +32,7 @@ public class WorldManager {
         this.playerManager = new PlayerManager(server, this.taskExecutor);
         this.countdownManager = new CountdownManager(server);
         this.resetManager = new ResetManager(
-            server, this, playerManager, lobbyWorld, fountainPlayers
+            server, this, playerManager, lobbyWorld, fountainPlayers, taskExecutor
         );
         lobbyWorld.prepareLobbyFiles(server);
         initGameWorlds(server);
@@ -68,8 +68,12 @@ public class WorldManager {
 
     public void resetWorlds(String seed) {
         state = WorldState.RESETTING;
-        resetManager.resetWorlds(seed);
-        state = WorldState.LOADED;
+        resetManager.resetWorlds(seed).whenCompleteAsync((v, e) -> {
+            if (e != null) {
+                WorldReset.LOGGER.error("Error during world reset", e);
+            }
+            state = WorldState.LOADED;
+        }, taskExecutor);
     }
 
     public boolean shouldStop(ServerPlayer player) {
