@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.api.LobbyWorld;
+import me.libreh.worldreset.api.WorldDeletion;
 import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
@@ -31,7 +32,6 @@ import net.minecraft.world.level.levelgen.Heightmap;
 import net.minecraft.world.level.levelgen.structure.Structure;
 import net.minecraft.world.level.levelgen.structure.StructureStart;
 import net.minecraft.world.level.storage.LevelData;
-import net.minecraft.world.scores.Objective;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
@@ -63,7 +63,6 @@ public class ResetManager {
         long seedLong = SeedUtil.parseSeed(seedString);
 
         tickKeepAlive();
-        clearScoreboardObjectives();
         stopAllRaids();
         saveWorldData();
         deleteGameWorlds();
@@ -101,20 +100,11 @@ public class ResetManager {
     }
 
     private void deleteGameWorlds() {
-        ArcadeDimensions.delete(server, worldManager.getGameOverworld());
-        ArcadeDimensions.delete(server, worldManager.getGameNether());
-        ArcadeDimensions.delete(server, worldManager.getGameEnd());
-    }
-
-    private void clearScoreboardObjectives() {
-        List<Objective> objectives = new ArrayList<>(server.getScoreboard().getObjectives());
-        for (Objective objective : objectives) {
-            try {
-                server.getScoreboard().removeObjective(objective);
-            } catch (Throwable e) {
-                WorldReset.LOGGER.error("Error removing objective:", e);
-            }
-        }
+        WorldDeletion.deleteWorlds(server,
+            worldManager.getGameOverworld(),
+            worldManager.getGameNether(),
+            worldManager.getGameEnd()
+        );
     }
 
     private void stopAllRaids() {
