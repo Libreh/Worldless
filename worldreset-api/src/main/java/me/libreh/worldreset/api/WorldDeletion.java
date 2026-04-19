@@ -2,7 +2,7 @@ package me.libreh.worldreset.api;
 
 import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
 import net.casual.arcade.dimensions.level.CustomLevel;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerWorldEvents;
 import net.minecraft.server.MinecraftServer;
 import org.apache.commons.io.file.PathUtils;
 import org.slf4j.Logger;
@@ -26,7 +26,7 @@ public class WorldDeletion {
         // Remove from server on the main thread (fast, prevents ticking)
         for (CustomLevel level : levels) {
             ((MinecraftServerAccessor) server).getLevels().remove(level.dimension());
-            ServerLevelEvents.UNLOAD.invoker().onLevelUnload(server, level);
+            ServerWorldEvents.UNLOAD.invoker().onWorldUnload(server, level);
         }
 
         // Rename directories to temp names before new worlds are created at the same paths
