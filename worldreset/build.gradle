@@ -35,7 +35,7 @@ if (System.getenv("MODRINTH")) {
         projectId = 'wDzF9EIN'
         versionNumber = "" + version
         versionType = isStable ? "release" : "beta"
-        uploadFile = remapJar
+        uploadFile = jar
         gameVersions = [((String) project.minecraft_version)]
         changelog = System.getenv("CHANGELOG")
         loaders = ["fabric", "quilt"]
@@ -46,7 +46,7 @@ if (System.getenv("MODRINTH")) {
         }
     }
 
-    remapJar {
+    jar {
         finalizedBy project.tasks.modrinth
     }
 }
