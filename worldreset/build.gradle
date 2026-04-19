@@ -42,7 +42,7 @@ if (System.getenv("MODRINTH")) {
         dependencies {
             required.project "fabric-api"
             required.project "fabric-language-kotlin"
-            required.project "fabric-permissions-api"
+            embedded.project "fabric-permissions-api"
         }
     }
 
