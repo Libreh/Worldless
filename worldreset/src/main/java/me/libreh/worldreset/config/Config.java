@@ -42,37 +42,37 @@ public class Config {
 
     public static class ResetOnLoad {
         @SerializedName("effects")
-        public boolean effects = true;
+        public boolean effects = false;
 
         @SerializedName("health")
-        public boolean health = true;
+        public boolean health = false;
 
         @SerializedName("hunger")
-        public boolean hunger = true;
+        public boolean hunger = false;
 
         @SerializedName("statistics")
-        public boolean statistics = true;
+        public boolean statistics = false;
 
         @SerializedName("advancements")
-        public boolean advancements = true;
+        public boolean advancements = false;
 
         @SerializedName("experience")
-        public boolean experience = true;
+        public boolean experience = false;
 
         @SerializedName("inventory")
-        public boolean inventory = true;
+        public boolean inventory = false;
 
         @SerializedName("recipes")
-        public boolean recipes = true;
+        public boolean recipes = false;
 
         @SerializedName("attributes")
-        public boolean attributes = true;
+        public boolean attributes = false;
 
         @SerializedName("time_of_day")
-        public int timeOfDay = 1000;
+        public int timeOfDay = -1;
 
         @SerializedName("clear_weather")
-        public boolean clearWeather = true;
+        public boolean clearWeather = false;
     }
 
     public static class StopTimerOn {
