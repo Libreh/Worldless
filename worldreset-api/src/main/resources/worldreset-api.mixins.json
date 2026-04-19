@@ -1,0 +1,14 @@
+{
+  "required": true,
+  "package": "me.libreh.worldreset.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [
+    "world.MinecraftServerAccessor"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "overwrites": {
+    "requireAnnotations": true
+  }
+}

@@ -1,0 +1,14 @@
+base.archivesName = "worldreset-api"
+
+loom {
+    mods {
+        "worldreset-api" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    compileOnly("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
+    localRuntime("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
+}

@@ -1,0 +1,60 @@
+plugins {
+    id "com.modrinth.minotaur" version "2.+"
+}
+
+base.archivesName = "worldreset"
+
+loom {
+    accessWidenerPath = file("src/main/resources/worldreset.accesswidener")
+    mods {
+        "worldreset" {
+            sourceSet sourceSets.main
+        }
+    }
+}
+
+dependencies {
+    api project(path: ":worldreset-api")
+    include project(path: ":worldreset-api")
+
+    compileOnly "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
+    localRuntime "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
+    include "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
+
+    compileOnly "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
+    compileOnly "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
+    compileOnly "net.casualchampionships:arcade-events-server:${project.arcade_version}"
+    compileOnly "net.casualchampionships:arcade-extensions:${project.arcade_version}"
+    compileOnly "net.casualchampionships:arcade-utils:${project.arcade_version}"
+
+    localRuntime "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
+    localRuntime "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
+    localRuntime "net.casualchampionships:arcade-events-server:${project.arcade_version}"
+    localRuntime "net.casualchampionships:arcade-extensions:${project.arcade_version}"
+    localRuntime "net.casualchampionships:arcade-utils:${project.arcade_version}"
+
+    include "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
+    include "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
+    include "net.casualchampionships:arcade-events-server:${project.arcade_version}"
+    include "net.casualchampionships:arcade-extensions:${project.arcade_version}"
+    include "net.casualchampionships:arcade-utils:${project.arcade_version}"
+}
+
+var isStable = project.is_stable == "true"
+
+if (System.getenv("MODRINTH")) {
+    modrinth {
+        token = System.getenv("MODRINTH")
+        projectId = 'wDzF9EIN'
+        versionNumber = "" + version
+        versionType = isStable ? "release" : "beta"
+        uploadFile = remapJar
+        gameVersions = [((String) project.minecraft_version)]
+        changelog = System.getenv("CHANGELOG")
+        loaders = ["fabric", "quilt"]
+    }
+
+    remapJar {
+        finalizedBy project.tasks.modrinth
+    }
+}

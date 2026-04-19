@@ -1,0 +1,19 @@
+{
+  "has_fixed_time": true,
+  "has_skylight": true,
+  "has_ceiling": false,
+  "has_ender_dragon_fight": false,
+  "coordinate_scale": 1.0,
+  "min_y": -64,
+  "height": 384,
+  "logical_height": 384,
+  "infiniburn": "#minecraft:infiniburn_overworld",
+  "ambient_light": 0.0,
+  "monster_spawn_light_level": 0,
+  "monster_spawn_block_light_limit": 0,
+  "attributes": {
+    "minecraft:gameplay/can_start_raid": false,
+    "minecraft:visual/sky_color": "#78A7FF",
+    "minecraft:visual/fog_color": "#C0D8FF"
+  }
+}
