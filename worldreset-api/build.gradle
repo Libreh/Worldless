@@ -1,3 +1,7 @@
+plugins {
+    id 'fabric-loom'
+}
+
 base.archivesName = "worldreset-api"
 
 loom {
@@ -9,6 +13,5 @@ loom {
 }
 
 dependencies {
-    compileOnly("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
-    localRuntime("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
+    modImplementation("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
 }

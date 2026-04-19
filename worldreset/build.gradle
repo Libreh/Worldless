@@ -1,4 +1,5 @@
 plugins {
+    id 'fabric-loom'
     id "com.modrinth.minotaur" version "2.+"
 }
 
@@ -17,27 +18,13 @@ dependencies {
     api project(path: ":worldreset-api")
     include project(path: ":worldreset-api")
 
-    compileOnly "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
-    localRuntime "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
-    include "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
+    modImplementation include("me.lucko:fabric-permissions-api:${project.permissions_api_version}")
 
-    compileOnly "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
-    compileOnly "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
-    compileOnly "net.casualchampionships:arcade-events-server:${project.arcade_version}"
-    compileOnly "net.casualchampionships:arcade-extensions:${project.arcade_version}"
-    compileOnly "net.casualchampionships:arcade-utils:${project.arcade_version}"
-
-    localRuntime "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
-    localRuntime "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
-    localRuntime "net.casualchampionships:arcade-events-server:${project.arcade_version}"
-    localRuntime "net.casualchampionships:arcade-extensions:${project.arcade_version}"
-    localRuntime "net.casualchampionships:arcade-utils:${project.arcade_version}"
-
-    include "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
-    include "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
-    include "net.casualchampionships:arcade-events-server:${project.arcade_version}"
-    include "net.casualchampionships:arcade-extensions:${project.arcade_version}"
-    include "net.casualchampionships:arcade-utils:${project.arcade_version}"
+    modImplementation include("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
+    modImplementation include("net.casualchampionships:arcade-event-registry:${project.arcade_version}")
+    modImplementation include("net.casualchampionships:arcade-events-server:${project.arcade_version}")
+    modImplementation include("net.casualchampionships:arcade-extensions:${project.arcade_version}")
+    modImplementation include("net.casualchampionships:arcade-utils:${project.arcade_version}")
 }
 
 var isStable = project.is_stable == "true"
@@ -52,6 +39,11 @@ if (System.getenv("MODRINTH")) {
         gameVersions = [((String) project.minecraft_version)]
         changelog = System.getenv("CHANGELOG")
         loaders = ["fabric", "quilt"]
+        dependencies {
+            required.project "fabric-api"
+            required.project "fabric-language-kotlin"
+            required.project "fabric-permissions-api"
+        }
     }
 
     remapJar {
