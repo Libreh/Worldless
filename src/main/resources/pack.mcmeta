@@ -1,9 +1,0 @@
-{
-  "pack": {
-    "pack_format": 94,
-    "supported_formats": [94, 94],
-    "min_format": 94,
-    "max_format": 94,
-    "description": "WorldReset Lobby"
-  }
-}

@@ -1,0 +1,32 @@
+{
+	"schemaVersion": 1,
+	"id": "worldreset",
+	"version": "${version}",
+	"name": "Worldreset",
+	"description": "World resetting utilty for Fabric",
+	"authors": [
+		"Libreh"
+	],
+	"contact": {
+		"sources": "https://github.com/Libreh/Worldless"
+	},
+	"license": "LGPLv3",
+	"icon": "assets/worldreset/icon.png",
+	"environment": "*",
+	"entrypoints": {
+		"main": [
+          "me.libreh.worldreset.WorldReset"
+		]
+	},
+	"mixins": [
+      "worldreset.mixins.json"
+	],
+	"accessWidener": "worldreset.accesswidener",
+	"depends": {
+		"fabricloader": ">=0.19.2",
+		"minecraft": "~26.1.2",
+		"java": ">=25",
+		"fabric-api": "*",
+		"fabric-language-kotlin": ">=1.13.7+kotlin.2.2.21"
+	}
+}

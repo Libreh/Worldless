@@ -1,82 +1,57 @@
 plugins {
-	id 'fabric-loom' version "${loom_version}"
-	id 'maven-publish'
-    id "com.modrinth.minotaur" version "2.+"
+    id 'net.fabricmc.fabric-loom' version "${loom_version}" apply false
+    id 'maven-publish'
 }
 
-base.archivesName = project.archives_base_name
-version = project.mod_version + "+" + project.minecraft_version
-group = project.maven_group
+subprojects {
+    apply plugin: 'net.fabricmc.fabric-loom'
+    apply plugin: 'maven-publish'
 
-repositories {
-	// Add repositories to retrieve artifacts from in here.
-	// You should only use this when depending on other mods because
-	// Loom adds the essential maven repositories to download Minecraft and libraries from automatically.
-	// See https://docs.gradle.org/current/userguide/declaring_repositories.html
-	// for more information about repositories.
-	maven { url 'https://maven.nucleoid.xyz' }
-	maven { url 'https://maven.supersanta.me/snapshots' }
-}
+    version = project.mod_version + "+" + project.minecraft_version
+    group = project.maven_group
 
-dependencies {
-	// To change the versions see the gradle.properties file
-	minecraft "com.mojang:minecraft:${project.minecraft_version}"
-    mappings loom.officialMojangMappings()
-	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
-
-	// Fabric API. This is technically optional, but you probably want it anyway.
-	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
-
-	modImplementation include("me.lucko:fabric-permissions-api:${project.permissions_api_version}")
-
-    include(modImplementation("net.casualchampionships:arcade-dimensions:${project.arcade_version}"))
-
-    include(modImplementation("net.casualchampionships:arcade-event-registry:${project.arcade_version}"))
-    include(modImplementation("net.casualchampionships:arcade-events-server:${project.arcade_version}"))
-    include(modImplementation("net.casualchampionships:arcade-extensions:${project.arcade_version}"))
-    include(modImplementation("net.casualchampionships:arcade-utils:${project.arcade_version}"))
-}
-
-processResources {
-	inputs.property "version", project.version
-
-	filesMatching("fabric.mod.json") {
-		expand "version": project.version
-	}
-}
-
-tasks.withType(JavaCompile).configureEach {
-	it.options.release = 21
-}
-
-java {
-	sourceCompatibility = JavaVersion.VERSION_21
-	targetCompatibility = JavaVersion.VERSION_21
-}
-
-jar {
-    inputs.property "archivesName", project.base.archivesName
-
-    from("LICENSE") {
-        rename { "${it}_${inputs.properties.archivesName}"}
-    }
-}
-
-var isStable = project.is_stable == "true"
-
-if (System.getenv("MODRINTH")) {
-    modrinth {
-        token = System.getenv("MODRINTH")
-        projectId = 'wDzF9EIN'// The ID of your modrinth project, slugs will not work.
-        versionNumber = "" + version // The version of the mod to upload.
-        versionType = isStable ? "release" : "beta"
-        uploadFile = remapJar // This links to a task that builds your mod jar and sets "uploadFile" to the mod jar.
-        gameVersions = [((String) project.minecraft_version)]
-        changelog = System.getenv("CHANGELOG")
-        loaders = ["fabric", "quilt"]
+    repositories {
+        maven { url 'https://maven.nucleoid.xyz' }
+        maven { url 'https://maven.supersanta.me/snapshots' }
     }
 
-    remapJar {
-        finalizedBy project.tasks.modrinth
+    dependencies {
+        minecraft "com.mojang:minecraft:${project.minecraft_version}"
+        compileOnly "net.fabricmc:fabric-loader:${project.loader_version}"
+        localRuntime "net.fabricmc:fabric-loader:${project.loader_version}"
+        compileOnly "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+        localRuntime "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+    }
+
+    processResources {
+        inputs.property "version", project.version
+
+        filesMatching("fabric.mod.json") {
+            expand "version": inputs.properties.version
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        it.options.release = 25
+    }
+
+    java {
+        sourceCompatibility = JavaVersion.VERSION_25
+        targetCompatibility = JavaVersion.VERSION_25
+    }
+
+    jar {
+        from(rootProject.file("LICENSE")) {
+            rename { "${it}_${project.base.archivesName.get()}"}
+        }
+    }
+
+    publishing {
+        publications {
+            create("mavenJava", MavenPublication) {
+                artifactId = project.base.archivesName.get()
+                from components.java
+            }
+        }
     }
 }
