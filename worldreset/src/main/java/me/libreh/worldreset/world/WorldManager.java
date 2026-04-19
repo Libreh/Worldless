@@ -6,8 +6,10 @@ import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.util.SeedUtil;
 import net.casual.arcade.dimensions.ArcadeDimensions;
 import net.casual.arcade.dimensions.level.CustomLevel;
+import net.casual.arcade.utils.level.LevelUtilsKt;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.Level;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -42,9 +44,7 @@ public class WorldManager {
         CustomLevel end = ArcadeDimensions.load(server, WorldReset.GAME_END);
 
         if (overworld != null && nether != null && end != null) {
-            this.gameOverworld = overworld;
-            this.gameNether = nether;
-            this.gameEnd = end;
+            setGameWorlds(overworld, nether, end);
             return;
         }
 
@@ -104,5 +104,8 @@ public class WorldManager {
         this.gameOverworld = overworld;
         this.gameNether = nether;
         this.gameEnd = end;
+        LevelUtilsKt.setSpoofedDimension(overworld, Level.OVERWORLD);
+        LevelUtilsKt.setSpoofedDimension(nether, Level.NETHER);
+        LevelUtilsKt.setSpoofedDimension(end, Level.END);
     }
 }
