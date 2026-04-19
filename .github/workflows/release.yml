@@ -24,15 +24,16 @@ jobs:
             gradle-
       - uses: actions/checkout@v4
       - name: Set up JDK
-        uses: actions/setup-java@v1
+        uses: actions/setup-java@v4
         with:
-          java-version: 21
+          distribution: temurin
+          java-version: 25
 
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Build and publish with Gradle
-        run: ./gradlew build publish
+      - name: Build with Gradle
+        run: ./gradlew build
         env:
           MODRINTH: ${{ secrets.MODRINTH }}
           CHANGELOG: ${{ github.event.release.body }}
@@ -40,5 +41,5 @@ jobs:
         if: github.event_name == 'release'
         uses: AButler/upload-release-assets@v3.0
         with:
-          files: 'build/libs/*.jar;!build/libs/*-sources.jar;!build/libs/*-dev.jar'
+          files: 'worldreset/build/libs/*.jar;worldreset-api/build/libs/*.jar;!*/build/libs/*-sources.jar;!*/build/libs/*-dev.jar'
           repo-token: ${{ secrets.GITHUB_TOKEN }}
