@@ -1,0 +1,26 @@
+package me.libreh.worldreset.mixin.game;
+
+import me.libreh.worldreset.WorldReset;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.server.PlayerAdvancements;
+import net.minecraft.server.level.ServerPlayer;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
+
+@Mixin(PlayerAdvancements.class)
+public abstract class PlayerAdvancementsMixin {
+    @Shadow private ServerPlayer player;
+
+    @Inject(method = "award", at = @At("TAIL"))
+    private void worldreset$award(AdvancementHolder advancementHolder, String string, CallbackInfoReturnable<Boolean> cir) {
+        var worlds = WorldReset.worlds();
+        if (worlds == null || player == null) return;
+        if (!((PlayerAdvancements) (Object) this).getOrStartProgress(advancementHolder).isDone()) return;
+        if (worlds.stopConditions.noteAdvancement(player, advancementHolder.id())) {
+            worlds.evaluateAndMaybeStop();
+        }
+    }
+}

@@ -8,18 +8,14 @@ import net.casual.arcade.dimensions.ArcadeDimensions;
 import net.casual.arcade.dimensions.level.CustomLevel;
 import net.casual.arcade.utils.level.LevelUtilsKt;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-
-import java.util.HashSet;
-import java.util.Set;
-import java.util.UUID;
 
 public class WorldManager {
     private final me.libreh.worldreset.api.ServerTaskExecutor taskExecutor;
-    public final Set<UUID> fountainPlayers = new HashSet<>();
+    public final StopConditionTracker stopConditions;
     private final CountdownManager countdownManager;
     public final PlayerManager playerManager;
+    public final PlayerResetState playerResetState;
     private final ResetManager resetManager;
     private WorldState state = WorldState.LOADED;
 
@@ -29,10 +25,12 @@ public class WorldManager {
 
     public WorldManager(MinecraftServer server, LobbyWorld lobbyWorld) {
         this.taskExecutor = new me.libreh.worldreset.api.ServerTaskExecutor(server);
+        this.stopConditions = new StopConditionTracker(server);
         this.playerManager = new PlayerManager(server, this.taskExecutor);
-        this.countdownManager = new CountdownManager(server);
+        this.playerResetState = PlayerResetState.load(server);
+        this.countdownManager = new CountdownManager(server, this.stopConditions);
         this.resetManager = new ResetManager(
-            server, this, playerManager, lobbyWorld, fountainPlayers, taskExecutor
+            server, this, playerManager, playerResetState, lobbyWorld, stopConditions
         );
         lobbyWorld.prepareLobbyFiles(server);
         initGameWorlds(server);
@@ -68,16 +66,23 @@ public class WorldManager {
 
     public void resetWorlds(String seed) {
         state = WorldState.RESETTING;
-        resetManager.resetWorlds(seed).whenCompleteAsync((v, e) -> {
-            if (e != null) {
-                WorldReset.LOGGER.error("Error during world reset", e);
-            }
+        try {
+            resetManager.resetWorlds(seed);
+        } catch (Throwable e) {
+            WorldReset.LOGGER.error("Error during world reset", e);
+        } finally {
             state = WorldState.LOADED;
-        }, taskExecutor);
+        }
     }
 
-    public boolean shouldStop(ServerPlayer player) {
-        return playerManager.shouldStopCountdown(player);
+    public boolean shouldStop() {
+        return stopConditions.shouldStop();
+    }
+
+    public void evaluateAndMaybeStop() {
+        if (countdownManager.isCountdownActive() && stopConditions.shouldStop()) {
+            stopCountdown();
+        }
     }
 
     public void setCountdownTimer(long seconds) {

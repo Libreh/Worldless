@@ -1,6 +1,7 @@
 base.archivesName = "worldreset-api"
 
 loom {
+    runConfigs.clear()
     mods {
         "worldreset-api" {
             sourceSet sourceSets.main

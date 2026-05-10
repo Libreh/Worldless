@@ -17,17 +17,20 @@ public class CountdownManager {
     private static final int TICKS_OFFSET = 39;
 
     private final MinecraftServer server;
+    private final StopConditionTracker stopConditions;
     private boolean isCountdownActive;
     private int ticks;
     private int remainingTicks;
     private int initialTicks;
 
-    public CountdownManager(MinecraftServer server) {
+    public CountdownManager(MinecraftServer server, StopConditionTracker stopConditions) {
         this.server = server;
+        this.stopConditions = stopConditions;
     }
 
     public void startCountdown(long seconds) {
         this.initialTicks = (int) (seconds * TICKS_PER_SECOND) + TICKS_OFFSET;
+        stopConditions.reset();
         continueCountdown();
     }
 

@@ -1,7 +1,6 @@
 package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.WorldReset;
-import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
@@ -74,10 +73,4 @@ public class PlayerManager {
         taskExecutor.execute(() -> preparePlayerForReset(connection.player));
     }
 
-    public boolean shouldStopCountdown(ServerPlayer player) {
-        if (!ConfigManager.config().stopTimerOn.endFountainEnter) return false;
-        int fountainPlayersCount = WorldReset.worlds().fountainPlayers.size();
-        int playerCount = player.level().getServer().getPlayerList().getPlayers().size();
-        return fountainPlayersCount == playerCount;
-    }
 } 

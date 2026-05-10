@@ -3,18 +3,16 @@ package me.libreh.worldreset.world;
 import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
+import me.libreh.worldreset.api.BossEvents;
+import me.libreh.worldreset.api.GameWorlds;
 import me.libreh.worldreset.api.LobbyWorld;
 import me.libreh.worldreset.api.WorldDeletion;
 import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
 import me.libreh.worldreset.util.SeedUtil;
-import net.casual.arcade.dimensions.ArcadeDimensions;
-import net.casual.arcade.dimensions.level.LevelPersistence;
-import net.casual.arcade.dimensions.level.builder.CustomLevelBuilder;
 import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
-import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevelsBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -25,7 +23,6 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.tags.TagKey;
-import net.minecraft.util.Util;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.raid.Raid;
 import net.minecraft.world.level.biome.Biome;
@@ -36,7 +33,6 @@ import net.minecraft.world.level.storage.LevelData;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
 import java.util.function.Predicate;
 
 public class ResetManager {
@@ -45,18 +41,18 @@ public class ResetManager {
     private final MinecraftServer server;
     private final WorldManager worldManager;
     private final PlayerManager playerManager;
-    private final Set<UUID> fountainPlayers;
-    private final me.libreh.worldreset.api.ServerTaskExecutor taskExecutor;
+    private final PlayerResetState playerResetState;
+    private final StopConditionTracker stopConditions;
 
-    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, LobbyWorld lobbyWorld, Set<UUID> fountainPlayers, me.libreh.worldreset.api.ServerTaskExecutor taskExecutor) {
+    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, PlayerResetState playerResetState, LobbyWorld lobbyWorld, StopConditionTracker stopConditions) {
         this.server = server;
         this.worldManager = worldManager;
         this.playerManager = playerManager;
-        this.fountainPlayers = fountainPlayers;
-        this.taskExecutor = taskExecutor;
+        this.playerResetState = playerResetState;
+        this.stopConditions = stopConditions;
     }
 
-    public CompletableFuture<Void> resetWorlds(String seed) {
+    public void resetWorlds(String seed) {
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             playerManager.preparePlayerForReset(player);
         }
@@ -67,45 +63,34 @@ public class ResetManager {
         tickKeepAlive();
         stopAllRaids();
         saveWorldData();
-        deleteGameWorlds();
-        tickKeepAlive();
-        createGameWorlds(seedLong);
-        return postResetAsync();
-    }
-
-    public void createGameWorlds(long seed) {
-        VanillaLikeLevelsBuilder builder = new VanillaLikeLevelsBuilder();
-        builder.set(VanillaDimension.Overworld, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.Overworld)
-            .dimensionKey(WorldReset.GAME_OVERWORLD)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        builder.set(VanillaDimension.Nether, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.Nether)
-            .dimensionKey(WorldReset.GAME_NETHER)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        builder.set(VanillaDimension.End, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.End)
-            .dimensionKey(WorldReset.GAME_END)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        VanillaLikeLevels levels = builder.build(server);
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Overworld));
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Nether));
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.End));
-        worldManager.setGameWorlds(
-            levels.getOrThrow(VanillaDimension.Overworld),
-            levels.getOrThrow(VanillaDimension.Nether),
-            levels.getOrThrow(VanillaDimension.End)
+        BossEvents.clearForLevels(
+            worldManager.getGameOverworld(),
+            worldManager.getGameNether(),
+            worldManager.getGameEnd()
         );
-    }
-
-    private void deleteGameWorlds() {
         WorldDeletion.deleteWorlds(server,
             worldManager.getGameOverworld(),
             worldManager.getGameNether(),
             worldManager.getGameEnd()
+        );
+        tickKeepAlive();
+        createGameWorlds(seedLong);
+        postReset();
+    }
+
+    public void createGameWorlds(long seed) {
+        VanillaLikeLevels levels = GameWorlds.create(
+            server,
+            WorldReset.GAME_OVERWORLD,
+            WorldReset.GAME_NETHER,
+            WorldReset.GAME_END,
+            seed,
+            false
+        );
+        worldManager.setGameWorlds(
+            levels.getOrThrow(VanillaDimension.Overworld),
+            levels.getOrThrow(VanillaDimension.Nether),
+            levels.getOrThrow(VanillaDimension.End)
         );
     }
 
@@ -129,23 +114,25 @@ public class ResetManager {
         server.tickConnection();
     }
 
-    private CompletableFuture<Void> postResetAsync() {
-        fountainPlayers.clear();
+    private void postReset() {
+        stopConditions.reset();
         setTimeOfDay();
         clearWeather();
-        return findAndSetSpawnAsync().thenAcceptAsync(customSpawn -> {
-            for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-                if (customSpawn != null) {
-                    var gameOverworld = worldManager.getGameOverworld();
-                    player.teleportTo(gameOverworld,
-                            customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
-                            Set.of(), 0.0F, 0.0F, true);
-                } else {
-                    playerManager.teleportToOverworldSpawn(player);
-                }
-                me.libreh.worldreset.world.PlayerReset.applyConfiguredResets(player);
+        BlockPos customSpawn = findAndSetSpawn();
+        Set<UUID> processedPlayers = new HashSet<>();
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) {
+            if (customSpawn != null) {
+                var gameOverworld = worldManager.getGameOverworld();
+                player.teleportTo(gameOverworld,
+                        customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
+                        Set.of(), 0.0F, 0.0F, true);
+            } else {
+                playerManager.teleportToOverworldSpawn(player);
             }
-        }, taskExecutor);
+            me.libreh.worldreset.world.PlayerReset.applyConfiguredResets(player);
+            processedPlayers.add(player.getUUID());
+        }
+        playerResetState.resetCycle(processedPlayers);
     }
 
     private void setTimeOfDay() {
@@ -164,69 +151,65 @@ public class ResetManager {
         }
     }
 
-    private CompletableFuture<@Nullable BlockPos> findAndSetSpawnAsync() {
+    private @Nullable BlockPos findAndSetSpawn() {
         var overworld = worldManager.getGameOverworld();
         var spawnNear = ConfigManager.config().spawnNear;
 
         if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
-            return CompletableFuture.supplyAsync(() -> {
-                BlockPos located = null;
-                BlockPos searchOrigin = BlockPos.ZERO;
+            BlockPos located = null;
+            BlockPos searchOrigin = BlockPos.ZERO;
 
-                for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
-                    BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
-                    if (candidate == null) break;
+            for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
+                BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
+                if (candidate == null) break;
 
-                    if (spawnNear.requireSurface) {
-                        overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
-                        int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
-                        if (candidate.getY() < surfaceY - 10) {
-                            WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
-                                    spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
-                                    attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
-                            double angle = attempt * (Math.PI / 2);
-                            searchOrigin = new BlockPos(
-                                    (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
-                                    0,
-                                    (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
-                            continue;
-                        }
+                if (spawnNear.requireSurface) {
+                    overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
+                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
+                    if (candidate.getY() < surfaceY - 10) {
+                        WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
+                                spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
+                                attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
+                        double angle = attempt * (Math.PI / 2);
+                        searchOrigin = new BlockPos(
+                                (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
+                                0,
+                                (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
+                        continue;
                     }
-
-                    located = candidate;
-                    break;
                 }
 
-                if (located != null) {
-                    int spawnX = located.getX();
-                    int spawnZ = located.getZ();
-                    if (spawnNear.offset > 0) {
-                        double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
-                        spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
-                        spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
-                    }
-                    BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
-                    if (spawnPos == null) {
-                        overworld.getChunk(spawnX >> 4, spawnZ >> 4);
-                        int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
-                        spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
-                    }
-                    server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
-                    WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
-                    return spawnPos;
+                located = candidate;
+                break;
+            }
+
+            if (located != null) {
+                int spawnX = located.getX();
+                int spawnZ = located.getZ();
+                if (spawnNear.offset > 0) {
+                    double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
+                    spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
+                    spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
                 }
-                WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
-                        spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
-                return null;
-            }, Util.backgroundExecutor());
+                BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
+                if (spawnPos == null) {
+                    overworld.getChunk(spawnX >> 4, spawnZ >> 4);
+                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
+                    spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
+                }
+                server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
+                WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
+                return spawnPos;
+            }
+            WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
+                    spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
+            return null;
         }
 
-        return CompletableFuture.supplyAsync(() -> {
-            BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawn(overworld);
-            server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
-            WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
-            return (BlockPos) null;
-        }, Util.backgroundExecutor());
+        BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawn(overworld);
+        server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
+        WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
+        return null;
     }
 
     @Nullable

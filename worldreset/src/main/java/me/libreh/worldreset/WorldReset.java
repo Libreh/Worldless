@@ -9,6 +9,7 @@ import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -57,6 +58,12 @@ public final class WorldReset implements ModInitializer {
 				worldManager = new WorldManager(server, lobbyWorld));
 		ServerTickEvents.START_SERVER_TICK.register(server ->
 				worldManager.onServerTick());
+		ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
+			if (worldManager == null) return;
+			if (worldManager.stopConditions.confirmPortalTeleport(player)) {
+				worldManager.evaluateAndMaybeStop();
+			}
+		});
 	}
 
     public static boolean hasPermission(CommandSourceStack source, String permission) {

@@ -3,9 +3,10 @@
   "package": "me.libreh.worldreset.mixin",
   "compatibilityLevel": "JAVA_21",
   "mixins": [
-    "game.EnderDragonEntityMixin",
     "game.EntityMixin",
+    "game.LivingEntityDieMixin",
     "game.LivingEntityMixin",
+    "game.PlayerAdvancementsMixin",
     "world.PlayerListMixin",
     "world.RaidsAccessor"
   ],

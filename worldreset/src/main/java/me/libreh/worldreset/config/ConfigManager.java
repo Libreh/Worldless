@@ -2,6 +2,8 @@ package me.libreh.worldreset.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.libreh.worldreset.WorldReset;
 import net.fabricmc.loader.api.FabricLoader;
@@ -10,13 +12,18 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
 
 public class ConfigManager {
-    public static final int VERSION = 4;
+    public static final int VERSION = 5;
     private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir();
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("worldreset.json");
     private static final Path OLD_CONFIG_PATH = CONFIG_DIR.resolve("worldless.json");
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
+    private static final Gson GSON = new GsonBuilder()
+            .setPrettyPrinting()
+            .disableHtmlEscaping()
+            .registerTypeAdapter(StopCondition.class, new StopCondition.Adapter())
+            .create();
 
     private static Config CONFIG;
 
@@ -32,6 +39,7 @@ public class ConfigManager {
                 try (var reader = Files.newBufferedReader(CONFIG_PATH)) {
                     config = GSON.fromJson(reader, Config.class);
                 }
+                CONFIG = config;
                 migrate();
             } else if (oldConfigFile.exists()) {
                 try (var reader = Files.newBufferedReader(OLD_CONFIG_PATH)) {
@@ -74,21 +82,43 @@ public class ConfigManager {
 
             int configVersion = configJson.get("config_version").getAsInt();
 
+            boolean endFountainEnter = true;
+            boolean dragonDeath = false;
+
             if (configVersion == 1) {
                 var endTimerOn = configJson.get("end_timer_on").getAsString();
-                boolean endFountainEnter = false;
-                boolean dragonDeath = false;
                 if (endTimerOn.equals("end_fountain")) {
                     endFountainEnter = true;
                 } else {
+                    endFountainEnter = false;
                     dragonDeath = true;
                 }
-                CONFIG.stopTimerOn.endFountainEnter = endFountainEnter;
-                CONFIG.stopTimerOn.dragonDeath = dragonDeath;
-            } else if (configVersion == 2) {
-                WorldReset.LOGGER.info("Migrating config from version 2 to version " + VERSION);
-            } else if (configVersion == 3) {
-                WorldReset.LOGGER.info("Migrating config from version 3 to version " + VERSION);
+            } else if (configVersion >= 2 && configVersion <= 4 && configJson.has("stop_timer_on")) {
+                JsonObject stopTimerOn = configJson.getAsJsonObject("stop_timer_on");
+                if (stopTimerOn.has("end_fountain_enter")) {
+                    endFountainEnter = stopTimerOn.get("end_fountain_enter").getAsBoolean();
+                }
+                if (stopTimerOn.has("dragon_death")) {
+                    dragonDeath = stopTimerOn.get("dragon_death").getAsBoolean();
+                }
+            }
+
+            if (configVersion < VERSION) {
+                WorldReset.LOGGER.info("Migrating config from version {} to version {}", configVersion, VERSION);
+                if (configVersion <= 4) {
+                    CONFIG.stopConditions = new ArrayList<>();
+                    if (endFountainEnter) {
+                        StopCondition.PortalEnter pe = new StopCondition.PortalEnter();
+                        pe.block = "minecraft:end_portal";
+                        pe.requireAllPlayers = true;
+                        CONFIG.stopConditions.add(pe);
+                    }
+                    if (dragonDeath) {
+                        StopCondition.EntityDeath ed = new StopCondition.EntityDeath();
+                        ed.entity = "minecraft:ender_dragon";
+                        CONFIG.stopConditions.add(ed);
+                    }
+                }
             }
         }
     }

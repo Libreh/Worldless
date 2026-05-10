@@ -3,7 +3,11 @@
   "package": "me.libreh.worldreset.mixin",
   "compatibilityLevel": "JAVA_25",
   "mixins": [
-    "world.MinecraftServerAccessor"
+    "world.ChunkMapAccessor",
+    "world.EnderDragonFightAccessor",
+    "world.MinecraftServerAccessor",
+    "world.TrackedEntityAccessor",
+    "world.WitherBossAccessor"
   ],
   "injectors": {
     "defaultRequire": 1

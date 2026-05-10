@@ -2,6 +2,9 @@ package me.libreh.worldreset.config;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Config {
     public static final Config DEFAULT = new Config();
 
@@ -14,8 +17,17 @@ public class Config {
     @SerializedName("restart_message")
     public boolean restartMessage = true;
 
-    @SerializedName("stop_timer_on")
-    public StopTimerOn stopTimerOn = new StopTimerOn();
+    @SerializedName("stop_conditions")
+    public List<StopCondition> stopConditions = defaultStopConditions();
+
+    private static List<StopCondition> defaultStopConditions() {
+        List<StopCondition> list = new ArrayList<>();
+        StopCondition.PortalEnter end = new StopCondition.PortalEnter();
+        end.block = "minecraft:end_portal";
+        end.requireAllPlayers = true;
+        list.add(end);
+        return list;
+    }
 
     @SerializedName("seed")
     public String seed = "random";
@@ -75,11 +87,4 @@ public class Config {
         public boolean clearWeather = false;
     }
 
-    public static class StopTimerOn {
-        @SerializedName("end_fountain_enter")
-        public boolean endFountainEnter = true;
-
-        @SerializedName("dragon_death")
-        public boolean dragonDeath = false;
-    }
 }
