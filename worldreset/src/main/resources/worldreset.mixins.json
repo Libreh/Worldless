@@ -7,6 +7,7 @@
     "game.LivingEntityDieMixin",
     "game.LivingEntityMixin",
     "game.PlayerAdvancementsMixin",
+    "game.ServerPlayerEndCreditsMixin",
     "world.PlayerListMixin",
     "world.RaidsAccessor"
   ],
