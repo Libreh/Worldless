@@ -2,7 +2,6 @@ package me.libreh.worldreset.config;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import me.libreh.worldreset.WorldReset;
@@ -15,7 +14,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 
 public class ConfigManager {
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
     private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir();
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("worldreset.json");
     private static final Path OLD_CONFIG_PATH = CONFIG_DIR.resolve("worldless.json");

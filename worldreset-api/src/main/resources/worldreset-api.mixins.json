@@ -5,7 +5,15 @@
   "mixins": [
     "world.ChunkMapAccessor",
     "world.EnderDragonFightAccessor",
+    "world.IOWorkerSkipCloseMixin",
     "world.MinecraftServerAccessor",
+    "world.MinecraftServerPollTaskAccessor",
+    "world.MinecraftServerPrepareLevelsMixin",
+    "world.MinecraftServerSaveMixin",
+    "world.PersistentEntitySectionManagerSkipSaveMixin",
+    "world.SavedDataStorageSkipSaveMixin",
+    "world.ServerChunkCacheAccessor",
+    "world.ServerChunkCacheSkipSaveMixin",
     "world.TrackedEntityAccessor",
     "world.WitherBossAccessor"
   ],

@@ -6,7 +6,7 @@ import me.libreh.worldreset.mixin.world.TrackedEntityAccessor;
 import net.casual.arcade.dimensions.level.CustomLevel;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.world.entity.Entity;
+import net.minecraft.world.level.storage.LevelResource;
 import org.apache.commons.io.file.PathUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,23 +15,22 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 public class WorldDeletion {
     private static final Logger LOGGER = LoggerFactory.getLogger(WorldDeletion.class);
 
-    public static void deleteWorlds(MinecraftServer server, CustomLevel... levels) {
+    private static final String[] CHUNK_SUBFOLDERS = {"region", "poi", "entities"};
+
+    public static void resetWorldChunks(MinecraftServer server, CustomLevel... levels) {
         var storage = ((MinecraftServerAccessor) server).getStorageSource();
 
-        // Remove from server on the main thread (fast, prevents ticking)
         for (CustomLevel level : levels) {
             ((MinecraftServerAccessor) server).getLevels().remove(level.dimension());
             ServerLevelEvents.UNLOAD.invoker().onLevelUnload(server, level);
         }
 
-        // Call removeEntity for each tracked entity before close. This lets mods
-        // that hook entity tracking (e.g. VMP's use_optimized_entity_tracking) clean up their
-        // per-world state, which otherwise never happens because close() skips the unload path.
         for (CustomLevel level : levels) {
             var chunkMap = (ChunkMapAccessor) level.getChunkSource().chunkMap;
             @SuppressWarnings("unchecked")
@@ -41,43 +40,72 @@ public class WorldDeletion {
             }
         }
 
-        // Close on server thread, not async: chunk-system close has main-thread asserts.
-        // Off-thread call throws and gets swallowed, leaving C2MEStorageThread alive and
-        // pinning the whole ChunkMap.
-        for (CustomLevel level : levels) {
-            try {
-                level.close();
-            } catch (Throwable t) {
-                LOGGER.error("Failed to close level {}", level.dimension().identifier(), t);
-            }
-        }
-
-        // Rename original paths so new worlds can be created at them immediately.
-        Path[] tempPaths = new Path[levels.length];
-        for (int i = 0; i < levels.length; i++) {
-            Path original = storage.getDimensionPath(levels[i].dimension());
-            Path temp = original.resolveSibling(original.getFileName() + "_deleting_" + System.nanoTime());
-            try {
-                if (Files.exists(original)) {
-                    Files.move(original, temp);
-                    tempPaths[i] = temp;
-                }
-            } catch (IOException e) {
-                LOGGER.error("Failed to rename {}, falling back to direct delete", original, e);
-                tempPaths[i] = original;
-            }
-        }
-
-        // Delete renamed directories off-thread. No level refs captured here.
-        CompletableFuture.runAsync(() -> {
-            for (Path path : tempPaths) {
-                if (path == null) continue;
+        ResetFlags.skipCloseSave.set(true);
+        try {
+            for (CustomLevel level : levels) {
                 try {
-                    PathUtils.deleteDirectory(path);
-                } catch (IOException e) {
-                    LOGGER.error("Failed to delete {}", path, e);
+                    level.close();
+                } catch (Throwable t) {
+                    LOGGER.error("Failed to close level {}", level.dimension().identifier(), t);
                 }
             }
-        });
+        } finally {
+            ResetFlags.skipCloseSave.set(false);
+        }
+
+        List<Path> toDeleteAsync = new ArrayList<>();
+        for (CustomLevel level : levels) {
+            Path dimPath = storage.getDimensionPath(level.dimension());
+
+            for (String sub : CHUNK_SUBFOLDERS) {
+                Path subPath = dimPath.resolve(sub);
+                if (!Files.exists(subPath)) continue;
+                Path temp = subPath.resolveSibling(sub + "_deleting_" + System.nanoTime());
+                try {
+                    Files.move(subPath, temp);
+                    toDeleteAsync.add(temp);
+                } catch (IOException e) {
+                    LOGGER.error("Failed to rename {}, falling back to direct delete", subPath, e);
+                    toDeleteAsync.add(subPath);
+                }
+            }
+
+            deleteQuietly(dimPath.resolve("data").resolve("arcade"));
+            deleteQuietly(dimPath.resolve("data").resolve("minecraft"));
+        }
+
+        Path mapsDir = storage.getLevelPath(LevelResource.DATA).resolve("minecraft").resolve("maps");
+        if (Files.isDirectory(mapsDir)) {
+            try (var entries = Files.list(mapsDir)) {
+                entries.forEach(WorldDeletion::deleteQuietly);
+            } catch (IOException e) {
+                LOGGER.error("Failed to list map data dir {}", mapsDir, e);
+            }
+        }
+
+        if (!toDeleteAsync.isEmpty()) {
+            CompletableFuture.runAsync(() -> {
+                for (Path path : toDeleteAsync) {
+                    try {
+                        PathUtils.deleteDirectory(path);
+                    } catch (IOException e) {
+                        LOGGER.error("Failed to delete {}", path, e);
+                    }
+                }
+            });
+        }
+    }
+
+    private static void deleteQuietly(Path path) {
+        if (!Files.exists(path)) return;
+        try {
+            if (Files.isDirectory(path)) {
+                PathUtils.deleteDirectory(path);
+            } else {
+                Files.delete(path);
+            }
+        } catch (IOException e) {
+            LOGGER.error("Failed to delete {}", path, e);
+        }
     }
 }

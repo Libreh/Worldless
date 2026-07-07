@@ -14,8 +14,12 @@
 	"license": "LGPLv3",
 	"environment": "*",
 	"mixins": [
-		"worldreset-api.mixins.json"
+		"worldreset-api.mixins.json",
+		"c2me-compat.mixins.json"
 	],
+	"suggests": {
+		"c2me": "*"
+	},
 	"depends": {
 		"fabricloader": ">=0.19.1",
 		"minecraft": "~26.1.2",

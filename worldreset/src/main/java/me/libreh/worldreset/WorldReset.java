@@ -1,6 +1,7 @@
 package me.libreh.worldreset;
 
 import me.libreh.worldreset.api.LobbyWorld;
+import me.libreh.worldreset.api.WorldPreloader;
 import me.libreh.worldreset.command.ResetCommand;
 import me.libreh.worldreset.command.WorldResetCommand;
 import me.libreh.worldreset.config.ConfigManager;
@@ -14,9 +15,12 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
+import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.level.Level;
 import org.slf4j.Logger;
@@ -43,6 +47,12 @@ public final class WorldReset implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
+		WorldPreloader.ASYNC_CHUNK_TICKET = Registry.register(
+			BuiltInRegistries.TICKET_TYPE,
+			"worldreset:async_chunk",
+			new TicketType(0L, TicketType.FLAG_LOADING)
+		);
+
 		ConfigManager.load();
 
         LobbyWorld lobbyWorld = new LobbyWorld(MOD_ID);

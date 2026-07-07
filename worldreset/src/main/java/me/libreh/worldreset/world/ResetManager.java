@@ -1,50 +1,42 @@
 package me.libreh.worldreset.world;
 
-import com.mojang.datafixers.util.Pair;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
-import me.libreh.worldreset.api.BossEvents;
-import me.libreh.worldreset.api.GameWorlds;
-import me.libreh.worldreset.api.LobbyWorld;
-import me.libreh.worldreset.api.WorldDeletion;
-import me.libreh.worldreset.config.Config;
+import me.libreh.worldreset.api.*;
 import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.mixin.world.MinecraftServerPollTaskAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
+import me.libreh.worldreset.mixin.world.ServerChunkCacheAccessor;
 import me.libreh.worldreset.util.SeedUtil;
+import net.casual.arcade.dimensions.ArcadeDimensions;
+import net.casual.arcade.dimensions.level.CustomLevel;
 import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Holder;
-import net.minecraft.core.HolderSet;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
-import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerChunkCache;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.tags.TagKey;
+import net.minecraft.server.level.TicketType;
 import net.minecraft.world.clock.WorldClocks;
 import net.minecraft.world.entity.raid.Raid;
-import net.minecraft.world.level.biome.Biome;
-import net.minecraft.world.level.levelgen.Heightmap;
-import net.minecraft.world.level.levelgen.structure.Structure;
-import net.minecraft.world.level.levelgen.structure.StructureStart;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.storage.LevelData;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
-import java.util.function.Predicate;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
 
 public class ResetManager {
-    private static final int SPAWN_SEARCH_MAX_DISTANCE = 10000; // blocks
-    private static final int SPAWN_SEARCH_RETRIES = 10;
     private final MinecraftServer server;
     private final WorldManager worldManager;
     private final PlayerManager playerManager;
     private final PlayerResetState playerResetState;
     private final StopConditionTracker stopConditions;
 
-    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, PlayerResetState playerResetState, LobbyWorld lobbyWorld, StopConditionTracker stopConditions) {
+    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, PlayerResetState playerResetState, StopConditionTracker stopConditions) {
         this.server = server;
         this.worldManager = worldManager;
         this.playerManager = playerManager;
@@ -59,6 +51,12 @@ public class ResetManager {
 
         String seedString = seed.isEmpty() ? ConfigManager.config().seed : seed;
         long seedLong = SeedUtil.parseSeed(seedString);
+        boolean explicitOverride = !seed.isEmpty() && !seed.equals(ConfigManager.config().seed);
+
+        WorldPool pool = worldManager.getWorldPool();
+        if (explicitOverride && pool != null) {
+            pool.discardAndKickOff(seedLong);
+        }
 
         tickKeepAlive();
         stopAllRaids();
@@ -68,14 +66,46 @@ public class ResetManager {
             worldManager.getGameNether(),
             worldManager.getGameEnd()
         );
-        WorldDeletion.deleteWorlds(server,
-            worldManager.getGameOverworld(),
-            worldManager.getGameNether(),
-            worldManager.getGameEnd()
-        );
-        tickKeepAlive();
-        createGameWorlds(seedLong);
-        postReset();
+        ScoreboardClear.clearAll(server);
+
+        CustomLevel liveOverworld = worldManager.getGameOverworld();
+        CustomLevel liveNether = worldManager.getGameNether();
+        CustomLevel liveEnd = worldManager.getGameEnd();
+
+        PooledWorlds pooled = (pool != null) ? pool.claim() : null;
+        boolean adopted = false;
+
+        if (pooled != null) {
+            ResetFlags.skipCloseSave.set(true);
+            try {
+                worldManager.getWorldPreloader().reset();
+                for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
+                    if (level != null) ArcadeDimensions.delete(server, level);
+                }
+                while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
+                worldManager.clearGameWorlds();
+                pool.registerPooledWorlds(pooled);
+                worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
+                WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
+                adopted = true;
+            } catch (Throwable e) {
+                WorldReset.LOGGER.error("Pool adoption failed, falling back to synchronous create", e);
+            } finally {
+                ResetFlags.skipCloseSave.set(false);
+            }
+        }
+
+        BlockPos customSpawn;
+        if (adopted) {
+            customSpawn = pooled.spawn();
+        } else {
+            WorldDeletion.resetWorldChunks(server, liveOverworld, liveNether, liveEnd);
+            tickKeepAlive();
+            createGameWorlds(seedLong);
+            customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), ConfigManager.config(), server);
+        }
+
+        postReset(customSpawn);
     }
 
     public void createGameWorlds(long seed) {
@@ -96,6 +126,7 @@ public class ResetManager {
 
     private void stopAllRaids() {
         for (ServerLevel world : List.of(worldManager.getGameOverworld(), worldManager.getGameNether(), worldManager.getGameEnd())) {
+            if (world == null) continue;
             RaidsAccessor raidManagerAccessor = (RaidsAccessor) world.getRaids();
             Int2ObjectMap<Raid> raids = raidManagerAccessor.getRaidMap();
             for (Raid raid : List.copyOf(raids.values())) {
@@ -114,18 +145,27 @@ public class ResetManager {
         server.tickConnection();
     }
 
-    private void postReset() {
+    private void postReset(@Nullable BlockPos customSpawn) {
         stopConditions.reset();
         setTimeOfDay();
         clearWeather();
-        BlockPos customSpawn = findAndSetSpawn();
+
+        var gameOverworld = worldManager.getGameOverworld();
+        BlockPos respawnPos = customSpawn != null ? customSpawn : SpawnFinder.findSpawn(gameOverworld);
+        server.setRespawnData(LevelData.RespawnData.of(gameOverworld.dimension(), respawnPos, 0.0F, 0.0F));
+
+        ChunkPos spawnChunk = ChunkPos.containing(respawnPos);
+        ServerChunkCache chunkSource = gameOverworld.getChunkSource();
+        chunkSource.addTicketAndLoadWithRadius(TicketType.SPAWN_SEARCH, spawnChunk, 2);
+        ((ServerChunkCacheAccessor) chunkSource).worldreset$invokeRunDistanceManagerUpdates();
+
         Set<UUID> processedPlayers = new HashSet<>();
+        boolean spawnNearNone = ConfigManager.config().spawnNear.type.equals("none");
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
-            if (customSpawn != null) {
-                var gameOverworld = worldManager.getGameOverworld();
+            if (customSpawn != null && !spawnNearNone) {
                 player.teleportTo(gameOverworld,
-                        customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
-                        Set.of(), 0.0F, 0.0F, true);
+                    customSpawn.getX() + 0.5, customSpawn.getY(), customSpawn.getZ() + 0.5,
+                    Set.of(), 0.0F, 0.0F, true);
             } else {
                 playerManager.teleportToOverworldSpawn(player);
             }
@@ -149,118 +189,5 @@ public class ResetManager {
             server.setWeatherParameters(0, 0, false, false);
             WorldReset.LOGGER.debug("Cleared weather");
         }
-    }
-
-    private @Nullable BlockPos findAndSetSpawn() {
-        var overworld = worldManager.getGameOverworld();
-        var spawnNear = ConfigManager.config().spawnNear;
-
-        if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
-            BlockPos located = null;
-            BlockPos searchOrigin = BlockPos.ZERO;
-
-            for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
-                BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
-                if (candidate == null) break;
-
-                if (spawnNear.requireSurface) {
-                    overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
-                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
-                    if (candidate.getY() < surfaceY - 10) {
-                        WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
-                                spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
-                                attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
-                        double angle = attempt * (Math.PI / 2);
-                        searchOrigin = new BlockPos(
-                                (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
-                                0,
-                                (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
-                        continue;
-                    }
-                }
-
-                located = candidate;
-                break;
-            }
-
-            if (located != null) {
-                int spawnX = located.getX();
-                int spawnZ = located.getZ();
-                if (spawnNear.offset > 0) {
-                    double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
-                    spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
-                    spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
-                }
-                BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
-                if (spawnPos == null) {
-                    overworld.getChunk(spawnX >> 4, spawnZ >> 4);
-                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
-                    spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
-                }
-                server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
-                WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
-                return spawnPos;
-            }
-            WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
-                    spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
-            return null;
-        }
-
-        BlockPos spawnPos = me.libreh.worldreset.api.SpawnFinder.findSpawn(overworld);
-        server.setRespawnData(LevelData.RespawnData.of(overworld.dimension(), spawnPos, 0.0F, 0.0F));
-        WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
-        return null;
-    }
-
-    @Nullable
-    private BlockPos findSpawnTarget(ServerLevel overworld, Config.SpawnNear spawnNear, BlockPos searchOrigin) {
-        if (spawnNear.type.equals("structure")) {
-            var registry = overworld.registryAccess().lookupOrThrow(Registries.STRUCTURE);
-            HolderSet<Structure> holderSet;
-            if (spawnNear.target.startsWith("#")) {
-                TagKey<Structure> tagKey = TagKey.create(Registries.STRUCTURE, Identifier.parse(spawnNear.target.substring(1)));
-                Optional<HolderSet.Named<Structure>> tag = registry.get(tagKey);
-                if (tag.isEmpty()) {
-                    WorldReset.LOGGER.warn("Unknown structure tag: {}", spawnNear.target);
-                    return null;
-                }
-                holderSet = tag.get();
-            } else {
-                Optional<Holder.Reference<Structure>> holder = registry.get(ResourceKey.create(Registries.STRUCTURE, Identifier.parse(spawnNear.target)));
-                if (holder.isEmpty()) {
-                    WorldReset.LOGGER.warn("Unknown structure: {}", spawnNear.target);
-                    return null;
-                }
-                holderSet = HolderSet.direct(holder.get());
-            }
-            int radiusChunks = Math.min(SPAWN_SEARCH_MAX_DISTANCE / 16, 500);
-            Pair<BlockPos, Holder<Structure>> result = overworld.getChunkSource().getGenerator()
-                .findNearestMapStructure(overworld, holderSet, searchOrigin, radiusChunks, false);
-            if (result == null) return null;
-
-            BlockPos pos = result.getFirst();
-            var chunk = overworld.getChunk(pos.getX() >> 4, pos.getZ() >> 4);
-            StructureStart start = chunk.getAllStarts().get(result.getSecond().value());
-            if (start != null && start.isValid()) {
-                return new BlockPos(pos.getX(), start.getBoundingBox().maxY(), pos.getZ());
-            }
-            return pos;
-
-        } else if (spawnNear.type.equals("biome")) {
-            Predicate<Holder<Biome>> predicate;
-            if (spawnNear.target.startsWith("#")) {
-                TagKey<Biome> tagKey = TagKey.create(Registries.BIOME, Identifier.parse(spawnNear.target.substring(1)));
-                predicate = h -> h.is(tagKey);
-            } else {
-                ResourceKey<Biome> biomeKey = ResourceKey.create(Registries.BIOME, Identifier.parse(spawnNear.target));
-                predicate = h -> h.is(biomeKey);
-            }
-            Pair<BlockPos, Holder<Biome>> result = overworld.findClosestBiome3d(
-                predicate, searchOrigin, SPAWN_SEARCH_MAX_DISTANCE, 32, 64
-            );
-            return result != null ? result.getFirst() : null;
-        }
-
-        return null;
     }
 }

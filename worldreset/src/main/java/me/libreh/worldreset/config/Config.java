@@ -1,6 +1,8 @@
 package me.libreh.worldreset.config;
 
 import com.google.gson.annotations.SerializedName;
+import me.libreh.worldreset.WorldReset;
+import net.minecraft.server.MinecraftServer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -10,6 +12,12 @@ public class Config {
 
     @SerializedName("config_version")
     public int version = ConfigManager.VERSION;
+
+    @SerializedName("pool_size")
+    public int poolSize = 1;
+
+    @SerializedName("preload_distance")
+    public String preloadDistance = "4";
 
     @SerializedName("countdown_sounds")
     public boolean countdownSounds = true;
@@ -85,6 +93,26 @@ public class Config {
 
         @SerializedName("clear_weather")
         public boolean clearWeather = false;
+    }
+
+    public float resolvePreloadDistance(MinecraftServer server) {
+        String raw = preloadDistance;
+        if (raw.endsWith("%")) {
+            float pct;
+            try {
+                pct = Float.parseFloat(raw.substring(0, raw.length() - 1));
+            } catch (NumberFormatException e) {
+                WorldReset.LOGGER.warn("Invalid preload_distance '{}', falling back to 0", raw);
+                return 0;
+            }
+            return Math.max(1, server.getPlayerList().getViewDistance() * pct / 100.0f);
+        }
+        try {
+            return Float.parseFloat(raw);
+        } catch (NumberFormatException e) {
+            WorldReset.LOGGER.warn("Invalid preload_distance '{}', falling back to 0", raw);
+            return 0;
+        }
     }
 
 }

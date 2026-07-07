@@ -1,0 +1,12 @@
+{
+  "required": false,
+  "package": "me.libreh.worldreset.mixin.c2me",
+  "compatibilityLevel": "JAVA_25",
+  "plugin": "me.libreh.worldreset.mixin.c2me.C2meCompatibilityPlugin",
+  "mixins": [
+    "ConsecutiveExecutorMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

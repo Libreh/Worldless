@@ -1,5 +1,9 @@
 base.archivesName = "worldreset-api"
 
+repositories {
+    maven { url 'https://jitpack.io' }
+}
+
 loom {
     runConfigs.clear()
     mods {
@@ -12,4 +16,5 @@ loom {
 dependencies {
     compileOnly("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
     localRuntime("net.casualchampionships:arcade-dimensions:${project.arcade_version}")
+    compileOnly("io.github.llamalad7:mixinextras-common:0.5.4")
 }

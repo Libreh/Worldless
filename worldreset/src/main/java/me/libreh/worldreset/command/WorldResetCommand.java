@@ -41,10 +41,10 @@ public final class WorldResetCommand {
         return Commands.literal(name)
                 .then(Commands.literal("reset")
                         .requires(src -> WorldReset.hasPermission(src, "reset"))
-                        .executes(ctx -> resetWorlds(""))
+                        .executes(ctx -> resetWorlds(ctx.getSource(), ""))
                         .then(Commands.argument("seed", StringArgumentType.word())
                                 .suggests((ctx, builder) -> builder.suggest("random").buildFuture())
-                                .executes(ctx -> resetWorlds(StringArgumentType.getString(ctx, "seed")))))
+                                .executes(ctx -> resetWorlds(ctx.getSource(), StringArgumentType.getString(ctx, "seed")))))
                 .then(Commands.literal("reload")
                         .requires(src -> WorldReset.hasPermission(src, "reload"))
                         .executes(ctx -> reloadConfig(ctx.getSource())))
@@ -115,13 +115,18 @@ public final class WorldResetCommand {
                                                                 BoolArgumentType.getBool(ctx, "require_all_players"))))))));
     }
 
-    private static int resetWorlds(String seed) {
-        WorldReset.worlds().resetWorlds(seed);
+    private static int resetWorlds(CommandSourceStack source, String seed) {
+        if (!WorldReset.worlds().resetWorlds(seed)) {
+            source.sendSuccess(() -> Component.literal("Next world isn't ready yet, reset queued")
+                    .append(Component.literal("Consider increasing pool_size in the config"))
+                .withStyle(ChatFormatting.GOLD), false);
+        }
         return 1;
     }
 
     private static int reloadConfig(CommandSourceStack source) {
         if (ConfigManager.load()) {
+            WorldReset.worlds().onConfigReload();
             source.sendSuccess(() -> Component.literal("Reloaded config!"), false);
         } else {
             source.sendFailure(Component.literal("Error occurred while reloading config!").withStyle(ChatFormatting.RED));

@@ -9,8 +9,6 @@ import net.minecraft.world.level.dimension.end.EnderDragonFight;
 public final class BossEvents {
     private BossEvents() {}
 
-    // Boss events aren't pruned before the level is deleted, so client bossbars linger.
-    // Force-send remove packets for every known server-side boss event in the given levels.
     public static void clearForLevels(ServerLevel... levels) {
         for (ServerLevel level : levels) {
             if (level == null) continue;
