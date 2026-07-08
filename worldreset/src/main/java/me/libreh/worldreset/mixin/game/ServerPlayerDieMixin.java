@@ -1,24 +1,25 @@
 package me.libreh.worldreset.mixin.game;
 
 import me.libreh.worldreset.WorldReset;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.damagesource.DamageSource;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(ServerPlayer.class)
-public class ServerPlayerEndCreditsMixin {
-    private static final Identifier END_PORTAL = Identifier.withDefaultNamespace("end_portal");
-
-    @Inject(method = "showEndCredits", at = @At("HEAD"))
-    private void worldreset$onShowEndCredits(CallbackInfo ci) {
+public class ServerPlayerDieMixin {
+    @Inject(method = "die", at = @At("TAIL"))
+    private void worldreset$playerDie(DamageSource damageSource, CallbackInfo ci) {
         var worlds = WorldReset.worlds();
         if (worlds == null) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
-        worlds.triggers.notePortalTouch(self, END_PORTAL);
-        if (worlds.triggers.confirmPortalTeleport(self)) {
+        if (self.level().isClientSide()) return;
+        Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
+        if (worlds.triggers.noteEntityDeath(id, self)) {
             worlds.evaluateTriggers();
         }
     }

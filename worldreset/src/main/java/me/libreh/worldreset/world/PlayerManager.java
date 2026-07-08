@@ -73,4 +73,19 @@ public class PlayerManager {
         taskExecutor.execute(() -> preparePlayerForReset(connection.player));
     }
 
+    public ServerPlayer respawnInto(ServerPlayer player, ServerLevel level, BlockPos spawnPos) {
+        player.setRespawnPosition(
+                new ServerPlayer.RespawnConfig(
+                        LevelData.RespawnData.of(level.dimension(), spawnPos, 0.0F, 0.0F),
+                        true
+                ),
+                false
+        );
+        var connection = player.connection;
+        connection.handleClientCommand(
+                new ServerboundClientCommandPacket(ServerboundClientCommandPacket.Action.PERFORM_RESPAWN)
+        );
+        return connection.player;
+    }
+
 } 

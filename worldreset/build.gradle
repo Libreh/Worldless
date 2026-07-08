@@ -21,6 +21,10 @@ dependencies {
     localRuntime "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
     include "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
 
+    compileOnly "eu.pb4:predicate-api:0.9.0+26.2"
+    localRuntime "eu.pb4:predicate-api:0.9.0+26.2"
+    include "eu.pb4:predicate-api:0.9.0+26.2"
+
     compileOnly "net.casualchampionships:arcade-dimensions:${project.arcade_version}"
     compileOnly "net.casualchampionships:arcade-event-registry:${project.arcade_version}"
     compileOnly "net.casualchampionships:arcade-events-server:${project.arcade_version}"
@@ -56,6 +60,7 @@ if (System.getenv("MODRINTH")) {
             required.project "fabric-api"
             required.project "fabric-language-kotlin"
             embedded.project "fabric-permissions-api"
+            embedded.project "predicate-api"
         }
     }
 

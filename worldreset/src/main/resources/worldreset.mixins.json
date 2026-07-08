@@ -4,9 +4,11 @@
   "compatibilityLevel": "JAVA_21",
   "mixins": [
     "game.EntityMixin",
+    "game.EntityTeleportSameDimensionMixin",
     "game.LivingEntityDieMixin",
     "game.LivingEntityMixin",
     "game.PlayerAdvancementsMixin",
+    "game.ServerPlayerDieMixin",
     "game.ServerPlayerEndCreditsMixin",
     "world.PlayerListMixin",
     "world.RaidsAccessor"

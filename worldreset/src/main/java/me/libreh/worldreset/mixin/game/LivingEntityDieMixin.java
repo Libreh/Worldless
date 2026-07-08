@@ -19,8 +19,8 @@ public class LivingEntityDieMixin {
         LivingEntity self = (LivingEntity) (Object) this;
         if (self.level().isClientSide()) return;
         Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
-        if (worlds.stopConditions.noteEntityDeath(id)) {
-            worlds.evaluateAndMaybeStop();
+        if (worlds.triggers.noteEntityDeath(id, self)) {
+            worlds.evaluateTriggers();
         }
     }
 }

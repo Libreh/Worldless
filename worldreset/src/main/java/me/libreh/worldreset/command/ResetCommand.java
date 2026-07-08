@@ -6,6 +6,7 @@ import me.libreh.worldreset.WorldReset;
 import net.minecraft.ChatFormatting;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 
 public class ResetCommand {
@@ -25,6 +26,7 @@ public class ResetCommand {
     private static int resetWorlds(CommandSourceStack source, String seed) {
         if (!WorldReset.worlds().resetWorlds(seed)) {
             source.sendSuccess(() -> Component.literal("Next world isn't ready yet, reset queued")
+                    .append(CommonComponents.NEW_LINE)
                     .append(Component.literal("Consider increasing pool_size in the config"))
                 .withStyle(ChatFormatting.YELLOW), false);
         }

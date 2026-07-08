@@ -28,9 +28,7 @@ public final class SpawnSearch {
 
     private SpawnSearch() {}
 
-    public static @Nullable BlockPos findSpawn(ServerLevel overworld, Config config, MinecraftServer server) {
-        var spawnNear = config.spawnNear;
-
+    public static @Nullable BlockPos findSpawn(ServerLevel overworld, Config.SpawnNear spawnNear, MinecraftServer server) {
         if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
             BlockPos located = null;
             BlockPos searchOrigin = BlockPos.ZERO;
