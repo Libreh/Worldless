@@ -19,7 +19,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class ConfigManager {
-    public static final int VERSION = 7;
+    public static final int VERSION = 8;
     private static final Path CONFIG_DIR = FabricLoader.getInstance().getConfigDir();
     private static final Path CONFIG_PATH = CONFIG_DIR.resolve("worldreset.json");
     private static final Path OLD_CONFIG_PATH = CONFIG_DIR.resolve("worldless.json");

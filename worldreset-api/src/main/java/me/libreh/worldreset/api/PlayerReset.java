@@ -6,6 +6,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.stats.StatType;
 import net.minecraft.world.entity.ai.attributes.AttributeInstance;
+import net.minecraft.world.level.GameType;
 import net.minecraft.world.phys.Vec3;
 
 import java.util.Optional;
@@ -78,6 +79,10 @@ public class PlayerReset {
         for (AttributeInstance attr : player.getAttributes().getAttributesToSync()) {
             player.getAttributes().resetBaseValue(attr.getAttribute());
         }
+    }
+
+    public static void resetGameMode(ServerPlayer player, GameType gameType) {
+        player.setGameMode(gameType);
     }
 
     private static <T> void resetStatsForType(ServerPlayer player, StatType<T> statType) {
