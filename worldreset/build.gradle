@@ -60,7 +60,6 @@ if (System.getenv("MODRINTH")) {
             required.project "fabric-api"
             required.project "fabric-language-kotlin"
             embedded.project "fabric-permissions-api"
-            embedded.project "predicate-api"
         }
     }
 
