@@ -5,6 +5,7 @@ import me.libreh.worldreset.api.WorldPreloader;
 import me.libreh.worldreset.command.ResetCommand;
 import me.libreh.worldreset.command.WorldResetCommand;
 import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.predicate.Predicates;
 import me.libreh.worldreset.world.WorldManager;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
@@ -53,6 +54,8 @@ public final class WorldReset implements ModInitializer {
 			new TicketType(0L, TicketType.FLAG_LOADING)
 		);
 
+		Predicates.register();
+
 		ConfigManager.load();
 
         LobbyWorld lobbyWorld = new LobbyWorld(MOD_ID);
@@ -70,8 +73,8 @@ public final class WorldReset implements ModInitializer {
 				worldManager.onServerTick());
 		ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
 			if (worldManager == null) return;
-			if (worldManager.stopConditions.confirmPortalTeleport(player)) {
-				worldManager.evaluateAndMaybeStop();
+			if (worldManager.triggers.confirmPortalTeleport(player)) {
+				worldManager.evaluateTriggers();
 			}
 		});
 	}

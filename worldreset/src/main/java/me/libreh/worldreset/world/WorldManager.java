@@ -12,6 +12,7 @@ import net.casual.arcade.dimensions.level.CustomLevel;
 import net.casual.arcade.utils.level.LevelUtilsKt;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -29,7 +30,7 @@ import java.util.concurrent.CompletableFuture;
 public class WorldManager implements WorldPoolHost {
     private final MinecraftServer server;
     private final me.libreh.worldreset.api.ServerTaskExecutor taskExecutor;
-    public final StopConditionTracker stopConditions;
+    public final TriggerTracker triggers;
     private final CountdownManager countdownManager;
     public final PlayerManager playerManager;
     public final PlayerResetState playerResetState;
@@ -47,20 +48,23 @@ public class WorldManager implements WorldPoolHost {
     private String queuedResetSeed = "";
     private boolean queuedFromCountdown;
 
+    private WorldSnapshot activeWorldSnapshot;
+
     public WorldManager(MinecraftServer server, LobbyWorld lobbyWorld) {
         this.server = server;
         this.taskExecutor = new me.libreh.worldreset.api.ServerTaskExecutor(server);
-        this.stopConditions = new StopConditionTracker(server);
+        this.triggers = new TriggerTracker(server);
         this.playerManager = new PlayerManager(server, this.taskExecutor);
         this.playerResetState = PlayerResetState.load(server);
-        this.countdownManager = new CountdownManager(server, this.stopConditions);
+        this.countdownManager = new CountdownManager(server, this.triggers);
         this.worldPreloader = new WorldPreloader(server);
         this.resetManager = new ResetManager(
-            server, this, playerManager, playerResetState, stopConditions
+            server, this, playerManager, playerResetState, triggers
         );
         lobbyWorld.prepareLobbyFiles(server);
         initGameWorlds(server);
         cleanupOrphanedPoolWorlds(server);
+        this.activeWorldSnapshot = WorldSnapshot.fromConfig(ConfigManager.config());
 
         if (ConfigManager.config().poolSize > 0) {
             this.worldPool = new WorldPool(server, this, taskExecutor, worldPreloader, WorldReset.MOD_ID);
@@ -120,7 +124,7 @@ public class WorldManager implements WorldPoolHost {
         countdownManager.tick();
         if (!countdownManager.isCountdownActive()) {
             boolean poolBusy = worldPool != null && !worldPool.isReady();
-            if (poolBusy) {
+            if (poolBusy && !hasPendingChanges()) {
                 if (!resetQueued) {
                     resetQueued = true;
                     queuedResetSeed = "";
@@ -148,15 +152,21 @@ public class WorldManager implements WorldPoolHost {
     }
 
     private void broadcastQueuedReset() {
-        Component msg = Component.literal("Next world isn't ready yet - reset queued. Consider increasing pool_size in the config.")
-            .withStyle(ChatFormatting.GOLD);
+        Component msg = Component.literal("Next world isn't ready yet, reset queued")
+                .append(CommonComponents.NEW_LINE)
+                .append(Component.literal("Consider increasing pool_size in the config"))
+            .withStyle(ChatFormatting.YELLOW);
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             player.sendSystemMessage(msg);
         }
     }
 
     public boolean resetWorlds(String seed) {
-        if (worldPool != null && !worldPool.isReady()) {
+        boolean hadPending = hasPendingChanges();
+        if (hadPending) {
+            commitPendingChanges();
+        }
+        if (!hadPending && worldPool != null && !worldPool.isReady()) {
             resetQueued = true;
             queuedResetSeed = seed;
             WorldReset.LOGGER.info("Reset queued: pool not ready (state={}, ready={})",
@@ -176,12 +186,27 @@ public class WorldManager implements WorldPoolHost {
         return true;
     }
 
-    public boolean shouldStop() {
-        return stopConditions.shouldStop();
+    public boolean hasPendingChanges() {
+        return !activeWorldSnapshot.equals(WorldSnapshot.fromConfig(ConfigManager.config()));
     }
 
-    public void evaluateAndMaybeStop() {
-        if (countdownManager.isCountdownActive() && stopConditions.shouldStop()) {
+    private void commitPendingChanges() {
+        WorldReset.LOGGER.info("Committing pending config changes (was: {}, now: {})",
+            activeWorldSnapshot, WorldSnapshot.fromConfig(ConfigManager.config()));
+        activeWorldSnapshot = WorldSnapshot.fromConfig(ConfigManager.config());
+        if (worldPool != null) {
+            worldPool.cleanup();
+        }
+    }
+
+    public boolean shouldStop() {
+        return triggers.shouldStop();
+    }
+
+    public void evaluateTriggers() {
+        if (triggers.shouldReset()) {
+            resetWorlds("");
+        } else if (countdownManager.isCountdownActive() && triggers.shouldStop()) {
             stopCountdown();
         }
     }
@@ -210,6 +235,13 @@ public class WorldManager implements WorldPoolHost {
         return gameEnd;
     }
 
+    public ResourceKey<Level> toVanillaDimension(ServerLevel level) {
+        if (level == gameOverworld) return Level.OVERWORLD;
+        if (level == gameNether) return Level.NETHER;
+        if (level == gameEnd) return Level.END;
+        return level.dimension();
+    }
+
     public WorldPreloader getWorldPreloader() {
         return worldPreloader;
     }
@@ -222,9 +254,11 @@ public class WorldManager implements WorldPoolHost {
         this.gameOverworld = overworld;
         this.gameNether = nether;
         this.gameEnd = end;
-        LevelUtilsKt.setSpoofedDimension(overworld, Level.OVERWORLD);
-        LevelUtilsKt.setSpoofedDimension(nether, Level.NETHER);
-        LevelUtilsKt.setSpoofedDimension(end, Level.END);
+        if (ConfigManager.config().spoofDimension) {
+            LevelUtilsKt.setSpoofedDimension(overworld, Level.OVERWORLD);
+            LevelUtilsKt.setSpoofedDimension(nether, Level.NETHER);
+            LevelUtilsKt.setSpoofedDimension(end, Level.END);
+        }
         ActiveWorldsState.save(server, overworld.dimension(), nether.dimension(), end.dimension());
     }
 
@@ -238,6 +272,7 @@ public class WorldManager implements WorldPoolHost {
     public void onConfigReload() {
         int poolSize = ConfigManager.config().poolSize;
         if (poolSize > 0 && worldPool == null) {
+            activeWorldSnapshot = WorldSnapshot.fromConfig(ConfigManager.config());
             worldPool = new WorldPool(server, this, taskExecutor, worldPreloader, WorldReset.MOD_ID);
             WorldReset.LOGGER.info("World pool enabled (pool_size={})", poolSize);
         } else if (poolSize <= 0 && worldPool != null) {
@@ -254,7 +289,7 @@ public class WorldManager implements WorldPoolHost {
 
     @Override
     public long nextSeed() {
-        return SeedUtil.parseSeed(ConfigManager.config().seed);
+        return SeedUtil.parseSeed(activeWorldSnapshot.seed());
     }
 
     @Override
@@ -264,9 +299,9 @@ public class WorldManager implements WorldPoolHost {
 
     @Override
     public CompletableFuture<@Nullable BlockPos> findSpawn(ServerLevel overworld) {
-        var config = ConfigManager.config();
+        var spawnNear = activeWorldSnapshot.toSpawnNear();
         return CompletableFuture.supplyAsync(
-            () -> SpawnSearch.findSpawn(overworld, config, server),
+            () -> SpawnSearch.findSpawn(overworld, spawnNear, server),
             taskExecutor
         );
     }

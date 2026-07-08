@@ -1,11 +1,22 @@
 package me.libreh.worldreset.config;
 
 import com.google.gson.annotations.SerializedName;
+import eu.pb4.predicate.api.BuiltinPredicates;
+import eu.pb4.predicate.api.MinecraftPredicate;
 import me.libreh.worldreset.WorldReset;
+import me.libreh.worldreset.predicate.AdvancementPredicate;
+import me.libreh.worldreset.predicate.EntityDeathPredicate;
+import me.libreh.worldreset.predicate.PortalEnterPredicate;
+import net.minecraft.advancements.criterion.EntityPredicate;
+import net.minecraft.advancements.criterion.GameTypePredicate;
+import net.minecraft.advancements.criterion.PlayerPredicate;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.GameType;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public class Config {
     public static final Config DEFAULT = new Config();
@@ -19,21 +30,46 @@ public class Config {
     @SerializedName("preload_distance")
     public String preloadDistance = "4";
 
+    @SerializedName("spoof_dimension")
+    public boolean spoofDimension = true;
+
     @SerializedName("countdown_sounds")
     public boolean countdownSounds = true;
 
     @SerializedName("restart_message")
     public boolean restartMessage = true;
 
-    @SerializedName("stop_conditions")
-    public List<StopCondition> stopConditions = defaultStopConditions();
+    @SerializedName("stop_triggers")
+    public List<MinecraftPredicate> stopTriggers = defaultStopTriggers();
 
-    private static List<StopCondition> defaultStopConditions() {
-        List<StopCondition> list = new ArrayList<>();
-        StopCondition.PortalEnter end = new StopCondition.PortalEnter();
-        end.block = "minecraft:end_portal";
-        end.requireAllPlayers = true;
-        list.add(end);
+    @SerializedName("reset_triggers")
+    public List<MinecraftPredicate> resetTriggers = defaultResetTriggers();
+
+    private static List<MinecraftPredicate> defaultStopTriggers() {
+        List<MinecraftPredicate> list = new ArrayList<>();
+        list.add(new PortalEnterPredicate(
+            Identifier.parse("minecraft:end_portal"),
+            false,
+            Optional.of(Identifier.parse("minecraft:the_end")),
+            Optional.empty()
+        ));
+        list.add(new AdvancementPredicate(
+            Identifier.parse("minecraft:nether/uneasy_alliance"),
+            false,
+            Optional.empty()
+        ));
+        return list;
+    }
+
+    private static List<MinecraftPredicate> defaultResetTriggers() {
+        List<MinecraftPredicate> list = new ArrayList<>();
+        EntityPredicate filter = EntityPredicate.Builder.entity()
+            .subPredicate(PlayerPredicate.Builder.player().setGameType(GameTypePredicate.of(GameType.SURVIVAL)).build())
+            .build();
+        list.add(new EntityDeathPredicate(
+            Identifier.parse("minecraft:player"),
+            Optional.of(BuiltinPredicates.vanillaEntityPredicate(filter))
+        ));
         return list;
     }
 
@@ -62,37 +98,37 @@ public class Config {
 
     public static class ResetOnLoad {
         @SerializedName("effects")
-        public boolean effects = false;
+        public boolean effects = true;
 
         @SerializedName("health")
-        public boolean health = false;
+        public boolean health = true;
 
         @SerializedName("hunger")
-        public boolean hunger = false;
+        public boolean hunger = true;
 
         @SerializedName("statistics")
-        public boolean statistics = false;
+        public boolean statistics = true;
 
         @SerializedName("advancements")
-        public boolean advancements = false;
+        public boolean advancements = true;
 
         @SerializedName("experience")
-        public boolean experience = false;
+        public boolean experience = true;
 
         @SerializedName("inventory")
-        public boolean inventory = false;
+        public boolean inventory = true;
 
         @SerializedName("recipes")
-        public boolean recipes = false;
+        public boolean recipes = true;
 
         @SerializedName("attributes")
-        public boolean attributes = false;
+        public boolean attributes = true;
 
         @SerializedName("time_of_day")
-        public int timeOfDay = -1;
+        public int timeOfDay = 1000;
 
         @SerializedName("clear_weather")
-        public boolean clearWeather = false;
+        public boolean clearWeather = true;
     }
 
     public float resolvePreloadDistance(MinecraftServer server) {

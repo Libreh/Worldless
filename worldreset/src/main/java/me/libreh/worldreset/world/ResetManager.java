@@ -34,21 +34,17 @@ public class ResetManager {
     private final WorldManager worldManager;
     private final PlayerManager playerManager;
     private final PlayerResetState playerResetState;
-    private final StopConditionTracker stopConditions;
+    private final TriggerTracker triggers;
 
-    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, PlayerResetState playerResetState, StopConditionTracker stopConditions) {
+    public ResetManager(MinecraftServer server, WorldManager worldManager, PlayerManager playerManager, PlayerResetState playerResetState, TriggerTracker triggers) {
         this.server = server;
         this.worldManager = worldManager;
         this.playerManager = playerManager;
         this.playerResetState = playerResetState;
-        this.stopConditions = stopConditions;
+        this.triggers = triggers;
     }
 
     public void resetWorlds(String seed) {
-        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
-            playerManager.preparePlayerForReset(player);
-        }
-
         String seedString = seed.isEmpty() ? ConfigManager.config().seed : seed;
         long seedLong = SeedUtil.parseSeed(seedString);
         boolean explicitOverride = !seed.isEmpty() && !seed.equals(ConfigManager.config().seed);
@@ -58,52 +54,112 @@ public class ResetManager {
             pool.discardAndKickOff(seedLong);
         }
 
+        PooledWorlds pooled = (pool != null) ? pool.claim() : null;
+        if (pooled != null) {
+            try {
+                if (ConfigManager.config().spoofDimension) {
+                    resetWithPoolViaLobby(pool, pooled);
+                } else {
+                    resetWithPoolDirect(pool, pooled);
+                }
+                return;
+            } catch (Throwable e) {
+                WorldReset.LOGGER.error("Pool adoption failed, falling back to synchronous create", e);
+            }
+        }
+        resetInPlace(seedLong);
+    }
+
+    private void resetWithPoolDirect(WorldPool pool, PooledWorlds pooled) {
         tickKeepAlive();
         stopAllRaids();
         saveWorldData();
-        BossEvents.clearForLevels(
-            worldManager.getGameOverworld(),
-            worldManager.getGameNether(),
-            worldManager.getGameEnd()
-        );
-        ScoreboardClear.clearAll(server);
 
         CustomLevel liveOverworld = worldManager.getGameOverworld();
         CustomLevel liveNether = worldManager.getGameNether();
         CustomLevel liveEnd = worldManager.getGameEnd();
+        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
+        ScoreboardClear.clearAll(server);
 
-        PooledWorlds pooled = (pool != null) ? pool.claim() : null;
-        boolean adopted = false;
+        pool.registerPooledWorlds(pooled);
+        worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
+        WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
 
-        if (pooled != null) {
-            ResetFlags.skipCloseSave.set(true);
-            try {
-                worldManager.getWorldPreloader().reset();
-                for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
-                    if (level != null) ArcadeDimensions.delete(server, level);
-                }
-                while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
-                worldManager.clearGameWorlds();
-                pool.registerPooledWorlds(pooled);
-                worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
-                WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
-                adopted = true;
-            } catch (Throwable e) {
-                WorldReset.LOGGER.error("Pool adoption failed, falling back to synchronous create", e);
-            } finally {
-                ResetFlags.skipCloseSave.set(false);
+        ServerLevel gameOverworld = worldManager.getGameOverworld();
+        BlockPos spawn = pooled.spawn() != null ? pooled.spawn() : SpawnFinder.findSpawn(gameOverworld);
+
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            if (!player.isAlive()) {
+                playerManager.respawnInto(player, gameOverworld, spawn);
             }
         }
 
-        BlockPos customSpawn;
-        if (adopted) {
-            customSpawn = pooled.spawn();
-        } else {
-            WorldDeletion.resetWorldChunks(server, liveOverworld, liveNether, liveEnd);
-            tickKeepAlive();
-            createGameWorlds(seedLong);
-            customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), ConfigManager.config(), server);
+        postReset(pooled.spawn());
+
+        tickKeepAlive();
+        ResetFlags.skipCloseSave.set(true);
+        try {
+            worldManager.getWorldPreloader().reset();
+            for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
+                if (level != null) ArcadeDimensions.delete(server, level);
+            }
+            while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
+        } finally {
+            ResetFlags.skipCloseSave.set(false);
         }
+    }
+
+    private void resetWithPoolViaLobby(WorldPool pool, PooledWorlds pooled) {
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            playerManager.preparePlayerForReset(player);
+        }
+
+        tickKeepAlive();
+        stopAllRaids();
+        saveWorldData();
+
+        CustomLevel liveOverworld = worldManager.getGameOverworld();
+        CustomLevel liveNether = worldManager.getGameNether();
+        CustomLevel liveEnd = worldManager.getGameEnd();
+        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
+        ScoreboardClear.clearAll(server);
+
+        ResetFlags.skipCloseSave.set(true);
+        try {
+            worldManager.getWorldPreloader().reset();
+            for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
+                if (level != null) ArcadeDimensions.delete(server, level);
+            }
+            while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
+            pool.registerPooledWorlds(pooled);
+            worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
+            WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
+        } finally {
+            ResetFlags.skipCloseSave.set(false);
+        }
+
+        postReset(pooled.spawn());
+    }
+
+    private void resetInPlace(long seed) {
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            playerManager.preparePlayerForReset(player);
+        }
+
+        tickKeepAlive();
+        stopAllRaids();
+        saveWorldData();
+
+        CustomLevel liveOverworld = worldManager.getGameOverworld();
+        CustomLevel liveNether = worldManager.getGameNether();
+        CustomLevel liveEnd = worldManager.getGameEnd();
+        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
+        ScoreboardClear.clearAll(server);
+
+        WorldDeletion.resetWorldChunks(server, liveOverworld, liveNether, liveEnd);
+        tickKeepAlive();
+        createGameWorlds(seed);
+        BlockPos customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), ConfigManager.config().spawnNear, server);
 
         postReset(customSpawn);
     }
@@ -146,7 +202,7 @@ public class ResetManager {
     }
 
     private void postReset(@Nullable BlockPos customSpawn) {
-        stopConditions.reset();
+        triggers.reset();
         setTimeOfDay();
         clearWeather();
 

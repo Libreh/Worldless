@@ -25,6 +25,6 @@ public class EntityMixin {
             return;
         }
         Identifier blockId = BuiltInRegistries.BLOCK.getKey((net.minecraft.world.level.block.Block) portal);
-        WorldReset.worlds().stopConditions.notePortalTouch(serverPlayer, blockId);
+        WorldReset.worlds().triggers.notePortalTouch(serverPlayer, blockId);
     }
 }
