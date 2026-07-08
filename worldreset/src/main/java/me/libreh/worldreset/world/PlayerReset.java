@@ -4,6 +4,7 @@ import me.libreh.worldreset.api.PlayerResetEvents;
 import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.level.GameType;
 
 public class PlayerReset {
     public static void applyConfiguredResets(ServerPlayer player) {
@@ -18,6 +19,10 @@ public class PlayerReset {
         if (cfg.inventory) me.libreh.worldreset.api.PlayerReset.resetInventory(player);
         if (cfg.recipes) me.libreh.worldreset.api.PlayerReset.resetRecipes(player);
         if (cfg.attributes) me.libreh.worldreset.api.PlayerReset.resetAttributes(player);
+        if (!cfg.gamemode.equalsIgnoreCase("none")) {
+            GameType type = GameType.byName(cfg.gamemode);
+            me.libreh.worldreset.api.PlayerReset.resetGameMode(player, type);
+        }
         PlayerResetEvents.fireAfterPlayerReset(player);
     }
 }

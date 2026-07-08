@@ -38,7 +38,7 @@ Durations support seconds (`15`/`15s`), minutes (`3m`), hours (`2h`), days (`7d`
 ```json5
 {
   // Don't touch!
-  "config_version": 7,
+  "config_version": 8,
   // Number of worlds kept preloaded for instant resets, if 0 players need to be teleported to worldreset:lobby
   "pool_size": 1,
   // Chunk radius to preload per world (number, or percentage of view distance e.g. "50%")
@@ -115,6 +115,8 @@ Durations support seconds (`15`/`15s`), minutes (`3m`), hours (`2h`), days (`7d`
     "recipes": false,
     // Reset player attributes (health boost, speed, etc.)
     "attributes": false,
+    // Gamemode applied to each player after reset (overrides hardcore spectator lock); "none" to skip
+    "gamemode": "survival",
     // Set time of day in game ticks (0-24000, -1 to disable)
     "time_of_day": -1,
     // Reset weather to clear
