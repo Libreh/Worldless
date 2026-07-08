@@ -8,8 +8,6 @@ import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevelsBuilder;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.Registries;
-import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
@@ -18,14 +16,11 @@ import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class WorldPool {
     private static final Logger LOGGER = LoggerFactory.getLogger(WorldPool.class);
-    private static final String ALPHANUM = "abcdefghijklmnopqrstuvwxyz0123456789";
-    private static final Random RANDOM = new Random();
 
     private final MinecraftServer server;
     private final WorldPoolHost host;
@@ -59,17 +54,8 @@ public class WorldPool {
         this.modId = modId;
     }
 
-    private static String randomSuffix() {
-        StringBuilder sb = new StringBuilder(16);
-        for (int i = 0; i < 16; i++) {
-            sb.append(ALPHANUM.charAt(RANDOM.nextInt(ALPHANUM.length())));
-        }
-        return sb.toString();
-    }
-
     private ResourceKey<Level> generatePoolKey(String dimensionType) {
-        return ResourceKey.create(Registries.DIMENSION,
-            Identifier.fromNamespaceAndPath(modId, dimensionType + "_" + randomSuffix()));
+        return DimensionKeys.generate(modId, dimensionType);
     }
 
     public void kickOff(long seed) {

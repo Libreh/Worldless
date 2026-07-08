@@ -165,11 +165,12 @@ public class ResetManager {
     }
 
     public void createGameWorlds(long seed) {
+        String modId = WorldReset.MOD_ID;
         VanillaLikeLevels levels = GameWorlds.create(
             server,
-            WorldReset.GAME_OVERWORLD,
-            WorldReset.GAME_NETHER,
-            WorldReset.GAME_END,
+            DimensionKeys.generate(modId, "overworld"),
+            DimensionKeys.generate(modId, "nether"),
+            DimensionKeys.generate(modId, "the_end"),
             seed,
             false
         );
