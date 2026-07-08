@@ -192,7 +192,7 @@ public final class WorldResetCommand {
         ConfigManager.save();
         MutableComponent base;
         if (type.equals("none")) {
-            base = Component.literal("Spawn near disabled.");
+            base = Component.literal("Spawn near disabled");
         } else {
             base = Component.literal("Spawn near set to " + type + ": " + target);
         }
@@ -204,7 +204,7 @@ public final class WorldResetCommand {
         int blocks = IntegerArgumentType.getInteger(ctx, "blocks");
         ConfigManager.config().spawnNear.offset = blocks;
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Spawn offset set to " + blocks + " blocks.")), false);
+        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Spawn offset set to " + blocks + " blocks")), false);
         return 1;
     }
 
@@ -212,16 +212,14 @@ public final class WorldResetCommand {
         boolean value = BoolArgumentType.getBool(ctx, "value");
         ConfigManager.config().spawnNear.requireSurface = value;
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Require surface set to " + value + ".")), false);
+        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Require surface set to " + value)), false);
         return 1;
     }
 
-    // Appends a deferral notice when seed/spawn changes won't take effect until the
-    // next reset (the pool still holds worlds built from the old config).
     private static Component withPendingNote(MutableComponent base) {
         if (WorldReset.worlds().hasPendingChanges()) {
             return base.append(CommonComponents.NEW_LINE)
-                .append(Component.literal("Applies on next reset.").withStyle(ChatFormatting.YELLOW));
+                .append(Component.literal("Applies on next reset").withStyle(ChatFormatting.YELLOW));
         }
         return base;
     }
@@ -253,7 +251,7 @@ public final class WorldResetCommand {
         if (listType.equals("both")) {
             clearTriggers(ctx, "stop");
             clearTriggers(ctx, "reset");
-            ctx.getSource().sendSuccess(() -> Component.literal("Cleared all triggers."), false);
+            ctx.getSource().sendSuccess(() -> Component.literal("Cleared all triggers"), false);
             return 1;
         }
         getTriggers(listType).clear();

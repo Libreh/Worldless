@@ -10,10 +10,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
-// StructureTemplate.Palette.cache is a plain HashMap and blocks(Block) calls
-// computeIfAbsent on it without synchronization. When the world pool generates
-// chunks off-thread while the server thread also generates chunks (e.g. player
-// spawn), two threads can hit the same Palette concurrently and CME the HashMap.
 @Mixin(StructureTemplate.Palette.class)
 public class StructureTemplatePaletteMixin {
     @Redirect(
