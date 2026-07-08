@@ -37,9 +37,6 @@ public final class WorldReset implements ModInitializer {
 	public static final Identifier LOBBY_WORLD_ID = Identifier.fromNamespaceAndPath(MOD_ID, "lobby");
 
 	public static final ResourceKey<Level> LOBBY_WORLD = ResourceKey.create(Registries.DIMENSION, LOBBY_WORLD_ID);
-	public static final ResourceKey<Level> GAME_OVERWORLD = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "overworld"));
-	public static final ResourceKey<Level> GAME_NETHER = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "nether"));
-	public static final ResourceKey<Level> GAME_END  = ResourceKey.create(Registries.DIMENSION, Identifier.fromNamespaceAndPath(MOD_ID, "the_end"));
 
 	private static WorldManager worldManager;
     public static WorldManager worlds() {
