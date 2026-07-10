@@ -1,9 +1,5 @@
 base.archivesName = "worldreset-api"
 
-repositories {
-    maven { url 'https://jitpack.io' }
-}
-
 loom {
     runConfigs.clear()
     mods {
