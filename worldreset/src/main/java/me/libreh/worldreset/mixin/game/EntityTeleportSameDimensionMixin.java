@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class EntityTeleportSameDimensionMixin {
     @Inject(method = "teleportSameDimension", at = @At("TAIL"))
     private void worldreset$onSameDimensionTeleport(ServerLevel level, TeleportTransition transition, CallbackInfoReturnable<Entity> cir) {
-        var worlds = WorldReset.worlds();
+        var worlds = WorldReset.worlds(level.getServer());
         if (worlds == null) return;
         Entity entity = (Entity) (Object) this;
         if (!(entity instanceof ServerPlayer player)) return;

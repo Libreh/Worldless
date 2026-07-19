@@ -3,12 +3,11 @@ package me.libreh.worldreset.world;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.api.*;
-import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.mixin.world.MinecraftServerPollTaskAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
 import me.libreh.worldreset.mixin.world.ServerChunkCacheAccessor;
 import me.libreh.worldreset.util.SeedUtil;
-import net.casual.arcade.dimensions.ArcadeDimensions;
 import net.casual.arcade.dimensions.level.CustomLevel;
 import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
@@ -44,10 +43,10 @@ public class ResetManager {
         this.triggers = triggers;
     }
 
-    public void resetWorlds(String seed) {
-        String seedString = seed.isEmpty() ? ConfigManager.config().seed : seed;
+    public void resetWorlds(Config cfg, String seed) {
+        String seedString = seed.isEmpty() ? cfg.seed : seed;
         long seedLong = SeedUtil.parseSeed(seedString);
-        boolean explicitOverride = !seed.isEmpty() && !seed.equals(ConfigManager.config().seed);
+        boolean explicitOverride = !seed.isEmpty() && !seed.equals(cfg.seed);
 
         WorldPool pool = worldManager.getWorldPool();
         if (explicitOverride && pool != null) {
@@ -57,20 +56,20 @@ public class ResetManager {
         PooledWorlds pooled = (pool != null) ? pool.claim() : null;
         if (pooled != null) {
             try {
-                if (ConfigManager.config().spoofDimension) {
-                    resetWithPoolViaLobby(pool, pooled);
+                if (cfg.spoofDimension) {
+                    resetWithPoolViaLobby(cfg, pool, pooled);
                 } else {
-                    resetWithPoolDirect(pool, pooled);
+                    resetWithPoolDirect(cfg, pool, pooled);
                 }
                 return;
             } catch (Throwable e) {
                 WorldReset.LOGGER.error("Pool adoption failed, falling back to synchronous create", e);
             }
         }
-        resetInPlace(seedLong);
+        resetInPlace(cfg, seedLong);
     }
 
-    private void resetWithPoolDirect(WorldPool pool, PooledWorlds pooled) {
+    private void resetWithPoolDirect(Config cfg, WorldPool pool, PooledWorlds pooled) {
         tickKeepAlive();
         stopAllRaids();
         saveWorldData();
@@ -94,14 +93,14 @@ public class ResetManager {
             }
         }
 
-        postReset(pooled.spawn());
+        postReset(cfg, pooled.spawn());
 
         tickKeepAlive();
         ResetFlags.skipCloseSave.set(true);
         try {
             worldManager.getWorldPreloader().reset();
             for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
-                if (level != null) ArcadeDimensions.delete(server, level);
+                if (level != null) WorldDeletion.deleteDimensionAsync(server, level);
             }
             while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
         } finally {
@@ -109,7 +108,7 @@ public class ResetManager {
         }
     }
 
-    private void resetWithPoolViaLobby(WorldPool pool, PooledWorlds pooled) {
+    private void resetWithPoolViaLobby(Config cfg, WorldPool pool, PooledWorlds pooled) {
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             playerManager.preparePlayerForReset(player);
         }
@@ -128,7 +127,7 @@ public class ResetManager {
         try {
             worldManager.getWorldPreloader().reset();
             for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
-                if (level != null) ArcadeDimensions.delete(server, level);
+                if (level != null) WorldDeletion.deleteDimensionAsync(server, level);
             }
             while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
             pool.registerPooledWorlds(pooled);
@@ -138,10 +137,10 @@ public class ResetManager {
             ResetFlags.skipCloseSave.set(false);
         }
 
-        postReset(pooled.spawn());
+        postReset(cfg, pooled.spawn());
     }
 
-    private void resetInPlace(long seed) {
+    private void resetInPlace(Config cfg, long seed) {
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             playerManager.preparePlayerForReset(player);
         }
@@ -159,9 +158,9 @@ public class ResetManager {
         WorldDeletion.resetWorldChunks(server, liveOverworld, liveNether, liveEnd);
         tickKeepAlive();
         createGameWorlds(seed);
-        BlockPos customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), ConfigManager.config().spawnNear, server);
+        BlockPos customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), cfg.spawnNear, server);
 
-        postReset(customSpawn);
+        postReset(cfg, customSpawn);
     }
 
     public void createGameWorlds(long seed) {
@@ -202,11 +201,12 @@ public class ResetManager {
         server.tickConnection();
     }
 
-    private void postReset(@Nullable BlockPos customSpawn) {
-        triggers.reset();
-        setTimeOfDay();
-        clearWeather();
+    public void initializeWorldSpawn(Config cfg) {
+        BlockPos customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), cfg.spawnNear, server);
+        setWorldSpawn(customSpawn);
+    }
 
+    private BlockPos setWorldSpawn(@Nullable BlockPos customSpawn) {
         var gameOverworld = worldManager.getGameOverworld();
         BlockPos respawnPos = customSpawn != null ? customSpawn : SpawnFinder.findSpawn(gameOverworld);
         server.setRespawnData(LevelData.RespawnData.of(gameOverworld.dimension(), respawnPos, 0.0F, 0.0F));
@@ -215,9 +215,19 @@ public class ResetManager {
         ServerChunkCache chunkSource = gameOverworld.getChunkSource();
         chunkSource.addTicketAndLoadWithRadius(TicketType.SPAWN_SEARCH, spawnChunk, 2);
         ((ServerChunkCacheAccessor) chunkSource).worldreset$invokeRunDistanceManagerUpdates();
+        return respawnPos;
+    }
+
+    private void postReset(Config cfg, @Nullable BlockPos customSpawn) {
+        triggers.reset();
+        setTimeOfDay(cfg);
+        clearWeather(cfg);
+
+        var gameOverworld = worldManager.getGameOverworld();
+        BlockPos respawnPos = setWorldSpawn(customSpawn);
 
         Set<UUID> processedPlayers = new HashSet<>();
-        boolean spawnNearNone = ConfigManager.config().spawnNear.type.equals("none");
+        boolean spawnNearNone = cfg.spawnNear.type.equals("none");
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (customSpawn != null && !spawnNearNone) {
                 player.teleportTo(gameOverworld,
@@ -226,14 +236,14 @@ public class ResetManager {
             } else {
                 playerManager.teleportToOverworldSpawn(player);
             }
-            me.libreh.worldreset.world.PlayerReset.applyConfiguredResets(player);
+            PlayerReset.applyConfiguredResets(cfg.resetOnLoad, player);
             processedPlayers.add(player.getUUID());
         }
         playerResetState.resetCycle(processedPlayers);
     }
 
-    private void setTimeOfDay() {
-        int timeOfDay = ConfigManager.config().resetOnLoad.timeOfDay;
+    private void setTimeOfDay(Config cfg) {
+        int timeOfDay = cfg.resetOnLoad.timeOfDay;
         if (timeOfDay >= 0) {
             var overworldClock = server.registryAccess().getOrThrow(WorldClocks.OVERWORLD);
             server.clockManager().setTotalTicks(overworldClock, timeOfDay);
@@ -241,8 +251,8 @@ public class ResetManager {
         }
     }
 
-    private void clearWeather() {
-        if (ConfigManager.config().resetOnLoad.clearWeather) {
+    private void clearWeather(Config cfg) {
+        if (cfg.resetOnLoad.clearWeather) {
             server.setWeatherParameters(0, 0, false, false);
             WorldReset.LOGGER.debug("Cleared weather");
         }

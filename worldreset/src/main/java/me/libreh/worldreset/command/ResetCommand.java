@@ -24,7 +24,7 @@ public class ResetCommand {
     }
 
     private static int resetWorlds(CommandSourceStack source, String seed) {
-        if (!WorldReset.worlds().resetWorlds(seed)) {
+        if (!WorldReset.worlds(source.getServer()).resetWorlds(seed)) {
             source.sendSuccess(() -> Component.literal("Next world isn't ready yet, reset queued")
                     .append(CommonComponents.NEW_LINE)
                     .append(Component.literal("Consider increasing pool_size in the config"))

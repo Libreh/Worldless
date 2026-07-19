@@ -14,9 +14,9 @@ public class ServerPlayerEndCreditsMixin {
 
     @Inject(method = "showEndCredits", at = @At("HEAD"))
     private void worldreset$onShowEndCredits(CallbackInfo ci) {
-        var worlds = WorldReset.worlds();
-        if (worlds == null) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
+        var worlds = WorldReset.worlds(self.level().getServer());
+        if (worlds == null) return;
         worlds.triggers.notePortalTouch(self, END_PORTAL);
         if (worlds.triggers.confirmPortalTeleport(self)) {
             worlds.evaluateTriggers();

@@ -7,9 +7,6 @@ import net.minecraft.world.level.Level;
 
 import java.util.Random;
 
-// Shared helper for generating non-colliding dimension keys with a random suffix.
-// Pool worlds and first-boot game worlds both use these so successive generations
-// never land on the same dimension key.
 public final class DimensionKeys {
     private static final String ALPHANUM = "abcdefghijklmnopqrstuvwxyz0123456789";
     private static final Random RANDOM = new Random();

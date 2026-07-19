@@ -2,7 +2,7 @@ package me.libreh.worldreset.world;
 
 import eu.pb4.predicate.api.MinecraftPredicate;
 import eu.pb4.predicate.api.PredicateContext;
-import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.config.Config;
 import me.libreh.worldreset.predicate.AdvancementPredicate;
 import me.libreh.worldreset.predicate.EntityDeathPredicate;
 import me.libreh.worldreset.predicate.PortalEnterPredicate;
@@ -16,18 +16,21 @@ import net.minecraft.world.level.Level;
 import me.libreh.worldreset.WorldReset;
 
 import java.util.*;
+import java.util.function.Supplier;
 
 public class TriggerTracker {
     private static final int PORTAL_TELEPORT_WINDOW_TICKS = 5;
 
     private final MinecraftServer server;
+    private final Supplier<Config> config;
 
     private final Map<UUID, PendingPortal> pendingPortalEntries = new HashMap<>();
     private final TriggerListState stopState = new TriggerListState();
     private final TriggerListState resetState = new TriggerListState();
 
-    public TriggerTracker(MinecraftServer server) {
+    public TriggerTracker(MinecraftServer server, Supplier<Config> config) {
         this.server = server;
+        this.config = config;
     }
 
     public void reset() {
@@ -38,7 +41,7 @@ public class TriggerTracker {
 
     public void notePortalTouch(ServerPlayer player, Identifier blockId) {
         ResourceKey<Level> dim = player.level() instanceof ServerLevel sl
-            ? WorldReset.worlds().toVanillaDimension(sl)
+            ? WorldReset.worlds(server).toVanillaDimension(sl)
             : player.level().dimension();
         pendingPortalEntries.put(player.getUUID(), new PendingPortal(blockId, dim, server.getTickCount()));
     }
@@ -48,32 +51,35 @@ public class TriggerTracker {
         if (pending == null) return false;
         if (server.getTickCount() - pending.tick > PORTAL_TELEPORT_WINDOW_TICKS) return false;
 
+        Config cfg = config.get();
         boolean any = false;
-        any |= checkPortal(stopState, ConfigManager.config().stopTriggers, player, pending.blockId, pending.originDimension);
-        any |= checkPortal(resetState, ConfigManager.config().resetTriggers, player, pending.blockId, pending.originDimension);
+        any |= checkPortal(stopState, cfg.stopTriggers, player, pending.blockId, pending.originDimension);
+        any |= checkPortal(resetState, cfg.resetTriggers, player, pending.blockId, pending.originDimension);
         return any;
     }
 
     public boolean noteEntityDeath(Identifier entityId, Entity entity) {
+        Config cfg = config.get();
         boolean any = false;
-        any |= checkEntityDeath(stopState, ConfigManager.config().stopTriggers, entityId, entity);
-        any |= checkEntityDeath(resetState, ConfigManager.config().resetTriggers, entityId, entity);
+        any |= checkEntityDeath(stopState, cfg.stopTriggers, entityId, entity);
+        any |= checkEntityDeath(resetState, cfg.resetTriggers, entityId, entity);
         return any;
     }
 
     public boolean noteAdvancement(ServerPlayer player, Identifier advancementId) {
+        Config cfg = config.get();
         boolean any = false;
-        any |= checkAdvancement(stopState, ConfigManager.config().stopTriggers, player, advancementId);
-        any |= checkAdvancement(resetState, ConfigManager.config().resetTriggers, player, advancementId);
+        any |= checkAdvancement(stopState, cfg.stopTriggers, player, advancementId);
+        any |= checkAdvancement(resetState, cfg.resetTriggers, player, advancementId);
         return any;
     }
 
     public boolean shouldStop() {
-        return stopState.shouldTrigger(ConfigManager.config().stopTriggers, server.getPlayerList().getPlayers().size());
+        return stopState.shouldTrigger(config.get().stopTriggers, server.getPlayerList().getPlayers().size());
     }
 
     public boolean shouldReset() {
-        return resetState.shouldTrigger(ConfigManager.config().resetTriggers, server.getPlayerList().getPlayers().size());
+        return resetState.shouldTrigger(config.get().resetTriggers, server.getPlayerList().getPlayers().size());
     }
 
     private boolean checkPortal(TriggerListState state, List<MinecraftPredicate> triggers, ServerPlayer player, Identifier blockId, ResourceKey<Level> originDimension) {

@@ -14,7 +14,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class LivingEntityMixin {
     @Inject(method = "hurtServer", at = @At("HEAD"), cancellable = true)
     private void hurtServer(ServerLevel level, DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
-        var worlds = WorldReset.worlds();
+        var worlds = WorldReset.worlds(level.getServer());
         if (worlds != null && worlds.state() == WorldState.RESETTING) {
             cir.setReturnValue(false);
         }

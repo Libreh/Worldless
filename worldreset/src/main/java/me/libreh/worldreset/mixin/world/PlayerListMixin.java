@@ -1,6 +1,7 @@
 package me.libreh.worldreset.mixin.world;
 
 import me.libreh.worldreset.WorldReset;
+import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.world.PlayerReset;
 import net.minecraft.network.Connection;
 import net.minecraft.server.level.ServerPlayer;
@@ -15,12 +16,12 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class PlayerListMixin {
     @Inject(method = "placeNewPlayer", at = @At("TAIL"))
     private void onPlaceNewPlayer(Connection connection, ServerPlayer player, CommonListenerCookie cookie, CallbackInfo ci) {
-        var worlds = WorldReset.worlds();
+        var worlds = WorldReset.worlds(player.level().getServer());
         if (worlds == null) return;
         if (worlds.playerResetState.isProcessed(player.getUUID())) return;
 
         worlds.playerManager.teleportToOverworldSpawn(player);
-        PlayerReset.applyConfiguredResets(player);
+        PlayerReset.applyConfiguredResets(ConfigManager.config().resetOnLoad, player);
         worlds.playerResetState.markProcessed(player.getUUID());
     }
 }

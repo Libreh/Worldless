@@ -16,8 +16,9 @@ public abstract class PlayerAdvancementsMixin {
 
     @Inject(method = "award", at = @At("TAIL"))
     private void worldreset$award(AdvancementHolder advancementHolder, String string, CallbackInfoReturnable<Boolean> cir) {
-        var worlds = WorldReset.worlds();
-        if (worlds == null || player == null) return;
+        if (player == null) return;
+        var worlds = WorldReset.worlds(player.level().getServer());
+        if (worlds == null) return;
         if (!((PlayerAdvancements) (Object) this).getOrStartProgress(advancementHolder).isDone()) return;
         if (worlds.triggers.noteAdvancement(player, advancementHolder.id())) {
             worlds.evaluateTriggers();

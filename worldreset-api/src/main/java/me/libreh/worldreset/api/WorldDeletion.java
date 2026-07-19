@@ -5,7 +5,9 @@ import me.libreh.worldreset.mixin.world.MinecraftServerAccessor;
 import me.libreh.worldreset.mixin.world.TrackedEntityAccessor;
 import net.casual.arcade.dimensions.level.CustomLevel;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.level.storage.LevelResource;
 import org.apache.commons.io.file.PathUtils;
 import org.slf4j.Logger;
@@ -94,6 +96,36 @@ public class WorldDeletion {
                 }
             });
         }
+    }
+
+    public static void deleteDimensionAsync(MinecraftServer server, CustomLevel level) {
+        var accessor = (MinecraftServerAccessor) server;
+        ResourceKey<Level> dimension = level.dimension();
+        Path directory = accessor.getStorageSource().getDimensionPath(dimension);
+
+        if (!accessor.getLevels().remove(dimension, level)) {
+            return;
+        }
+        ServerLevelEvents.UNLOAD.invoker().onLevelUnload(server, level);
+        try {
+            level.close();
+        } catch (IOException e) {
+            LOGGER.error("Failed to close level {} before async delete", dimension.identifier(), e);
+        }
+
+        Path toDelete = directory;
+        if (Files.isDirectory(directory)) {
+            Path renamed = directory.resolveSibling(directory.getFileName() + "_deleting_" + System.nanoTime());
+            try {
+                Files.move(directory, renamed);
+                toDelete = renamed;
+            } catch (IOException e) {
+                LOGGER.warn("Failed to rename {} before delete, deleting in place", directory, e);
+            }
+        }
+
+        Path finalPath = toDelete;
+        CompletableFuture.runAsync(() -> deleteQuietly(finalPath));
     }
 
     private static void deleteQuietly(Path path) {

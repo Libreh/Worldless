@@ -14,10 +14,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class ServerPlayerDieMixin {
     @Inject(method = "die", at = @At("TAIL"))
     private void worldreset$playerDie(DamageSource damageSource, CallbackInfo ci) {
-        var worlds = WorldReset.worlds();
-        if (worlds == null) return;
         ServerPlayer self = (ServerPlayer) (Object) this;
         if (self.level().isClientSide()) return;
+        var worlds = WorldReset.worlds(self.level().getServer());
+        if (worlds == null) return;
         Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
         if (worlds.triggers.noteEntityDeath(id, self)) {
             worlds.evaluateTriggers();

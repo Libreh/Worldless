@@ -2,14 +2,12 @@ package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.api.PlayerResetEvents;
 import me.libreh.worldreset.config.Config;
-import me.libreh.worldreset.config.ConfigManager;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.GameType;
 
 public class PlayerReset {
-    public static void applyConfiguredResets(ServerPlayer player) {
+    public static void applyConfiguredResets(Config.ResetOnLoad cfg, ServerPlayer player) {
         PlayerResetEvents.fireBeforePlayerReset(player);
-        Config.ResetOnLoad cfg = ConfigManager.config().resetOnLoad;
         if (cfg.effects) me.libreh.worldreset.api.PlayerReset.resetEffects(player);
         if (cfg.health) me.libreh.worldreset.api.PlayerReset.resetHealth(player);
         if (cfg.hunger) me.libreh.worldreset.api.PlayerReset.resetHunger(player);

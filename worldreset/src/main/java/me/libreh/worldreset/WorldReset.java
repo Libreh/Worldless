@@ -7,6 +7,7 @@ import me.libreh.worldreset.command.WorldResetCommand;
 import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.predicate.Predicates;
 import me.libreh.worldreset.world.WorldManager;
+import me.libreh.worldreset.world.WorldResetHolder;
 import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
@@ -21,9 +22,11 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.TicketType;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,9 +41,8 @@ public final class WorldReset implements ModInitializer {
 
 	public static final ResourceKey<Level> LOBBY_WORLD = ResourceKey.create(Registries.DIMENSION, LOBBY_WORLD_ID);
 
-	private static WorldManager worldManager;
-    public static WorldManager worlds() {
-        return worldManager;
+    public static @Nullable WorldManager worlds(MinecraftServer server) {
+        return ((WorldResetHolder) server).worldreset$worldManager();
     }
 
 	@Override
@@ -65,13 +67,16 @@ public final class WorldReset implements ModInitializer {
             ResetCommand.register(dispatcher);
         });
 		ServerLifecycleEvents.SERVER_STARTED.register(server ->
-				worldManager = new WorldManager(server, lobbyWorld));
-		ServerTickEvents.START_SERVER_TICK.register(server ->
-				worldManager.onServerTick());
+				((WorldResetHolder) server).worldreset$setWorldManager(new WorldManager(server, lobbyWorld)));
+		ServerTickEvents.START_SERVER_TICK.register(server -> {
+			WorldManager worlds = worlds(server);
+			if (worlds != null) worlds.onServerTick();
+		});
 		ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
-			if (worldManager == null) return;
-			if (worldManager.triggers.confirmPortalTeleport(player)) {
-				worldManager.evaluateTriggers();
+			WorldManager worlds = worlds(destination.getServer());
+			if (worlds == null) return;
+			if (worlds.triggers.confirmPortalTeleport(player)) {
+				worlds.evaluateTriggers();
 			}
 		});
 	}

@@ -124,7 +124,6 @@ public class Config {
         @SerializedName("attributes")
         public boolean attributes = true;
 
-        // Overrides vanilla's hardcore spectator lock after respawn; "none" skips.
         @SerializedName("gamemode")
         public String gamemode = "survival";
 

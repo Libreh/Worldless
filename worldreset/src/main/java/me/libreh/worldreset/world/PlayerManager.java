@@ -43,7 +43,7 @@ public class PlayerManager {
     }
 
     public void teleportToOverworldSpawn(ServerPlayer player) {
-        var overworld = WorldReset.worlds().getGameOverworld();
+        var overworld = WorldReset.worlds(server).getGameOverworld();
         BlockPos worldSpawnPos = overworld.getRespawnData().pos();
         Vec3 spawnPos = player.adjustSpawnLocation(overworld, worldSpawnPos).getBottomCenter();
         player.teleportTo(

@@ -31,6 +31,7 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
 
 import java.util.List;
 import java.util.Optional;
@@ -63,7 +64,7 @@ public final class WorldResetCommand {
                                 .executes(WorldResetCommand::setTimer)))
                 .then(Commands.literal("stop")
                         .requires(src -> WorldReset.hasPermission(src, "stop"))
-                        .executes(ctx -> stopTimer()))
+                        .executes(ctx -> stopTimer(ctx.getSource())))
                 .then(Commands.literal("seed")
                         .requires(src -> WorldReset.hasPermission(src, "seed"))
                         .then(Commands.argument("seed", StringArgumentType.word())
@@ -143,7 +144,7 @@ public final class WorldResetCommand {
     }
 
     private static int resetWorlds(CommandSourceStack source, String seed) {
-        if (!WorldReset.worlds().resetWorlds(seed)) {
+        if (!WorldReset.worlds(source.getServer()).resetWorlds(seed)) {
             source.sendSuccess(() -> Component.literal("Next world isn't ready yet, reset queued")
                     .append(CommonComponents.NEW_LINE)
                     .append(Component.literal("Consider increasing pool_size in the config"))
@@ -154,8 +155,8 @@ public final class WorldResetCommand {
 
     private static int reloadConfig(CommandSourceStack source) {
         if (ConfigManager.load()) {
-            WorldReset.worlds().onConfigReload();
-            source.sendSuccess(() -> withPendingNote(Component.literal("Reloaded config!")), false);
+            WorldReset.worlds(source.getServer()).onConfigReload();
+            source.sendSuccess(() -> withPendingNote(source.getServer(), Component.literal("Reloaded config!")), false);
         } else {
             source.sendFailure(Component.literal("Error occurred while reloading config!").withStyle(ChatFormatting.RED));
         }
@@ -165,16 +166,17 @@ public final class WorldResetCommand {
     private static int setTimer(CommandContext<CommandSourceStack> ctx) {
         String durationInput = StringArgumentType.getString(ctx, "duration");
         long seconds = TimeUtil.parseDuration(durationInput);
+        MinecraftServer server = ctx.getSource().getServer();
         if (seconds == 0) {
-            WorldReset.worlds().stopCountdown();
+            WorldReset.worlds(server).stopCountdown();
         } else {
-            WorldReset.worlds().setCountdownTimer(seconds);
+            WorldReset.worlds(server).setCountdownTimer(seconds);
         }
         return 1;
     }
 
-    private static int stopTimer() {
-        WorldReset.worlds().stopCountdown();
+    private static int stopTimer(CommandSourceStack source) {
+        WorldReset.worlds(source.getServer()).stopCountdown();
         return 1;
     }
 
@@ -182,7 +184,7 @@ public final class WorldResetCommand {
         String seed = StringArgumentType.getString(ctx, "seed");
         ConfigManager.config().seed = seed;
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Seed set to " + seed + ".")), false);
+        ctx.getSource().sendSuccess(() -> withPendingNote(ctx.getSource().getServer(), Component.literal("Seed set to " + seed + ".")), false);
         return 1;
     }
 
@@ -196,7 +198,7 @@ public final class WorldResetCommand {
         } else {
             base = Component.literal("Spawn near set to " + type + ": " + target);
         }
-        source.sendSuccess(() -> withPendingNote(base), false);
+        source.sendSuccess(() -> withPendingNote(source.getServer(), base), false);
         return 1;
     }
 
@@ -204,7 +206,7 @@ public final class WorldResetCommand {
         int blocks = IntegerArgumentType.getInteger(ctx, "blocks");
         ConfigManager.config().spawnNear.offset = blocks;
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Spawn offset set to " + blocks + " blocks")), false);
+        ctx.getSource().sendSuccess(() -> withPendingNote(ctx.getSource().getServer(), Component.literal("Spawn offset set to " + blocks + " blocks")), false);
         return 1;
     }
 
@@ -212,12 +214,12 @@ public final class WorldResetCommand {
         boolean value = BoolArgumentType.getBool(ctx, "value");
         ConfigManager.config().spawnNear.requireSurface = value;
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> withPendingNote(Component.literal("Require surface set to " + value)), false);
+        ctx.getSource().sendSuccess(() -> withPendingNote(ctx.getSource().getServer(), Component.literal("Require surface set to " + value)), false);
         return 1;
     }
 
-    private static Component withPendingNote(MutableComponent base) {
-        if (WorldReset.worlds().hasPendingChanges()) {
+    private static Component withPendingNote(MinecraftServer server, MutableComponent base) {
+        if (WorldReset.worlds(server).hasPendingChanges()) {
             return base.append(CommonComponents.NEW_LINE)
                 .append(Component.literal("Applies on next reset").withStyle(ChatFormatting.YELLOW));
         }

@@ -19,12 +19,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class EntityMixin {
     @Inject(method = "setAsInsidePortal", at = @At("TAIL"))
     private void setAsInsidePortal(Portal portal, BlockPos blockPos, CallbackInfo ci) {
-        if (WorldReset.worlds() == null) return;
         if (!(((Entity) (Object) this) instanceof ServerPlayer serverPlayer)) return;
+        var worlds = WorldReset.worlds(serverPlayer.level().getServer());
+        if (worlds == null) return;
         if (!(portal instanceof EndPortalBlock || portal instanceof NetherPortalBlock || portal instanceof EndGatewayBlock)) {
             return;
         }
         Identifier blockId = BuiltInRegistries.BLOCK.getKey((net.minecraft.world.level.block.Block) portal);
-        WorldReset.worlds().triggers.notePortalTouch(serverPlayer, blockId);
+        worlds.triggers.notePortalTouch(serverPlayer, blockId);
     }
 }

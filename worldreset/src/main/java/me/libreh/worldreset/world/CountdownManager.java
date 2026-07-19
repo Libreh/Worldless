@@ -1,7 +1,7 @@
 package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.WorldReset;
-import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.config.Config;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
@@ -11,6 +11,8 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 
+import java.util.function.Supplier;
+
 public class CountdownManager {
     private static final int TICKS_PER_SECOND = 20;
     private static final int COUNTDOWN_SOUND_THRESHOLD = 10;
@@ -18,14 +20,16 @@ public class CountdownManager {
 
     private final MinecraftServer server;
     private final TriggerTracker triggers;
+    private final Supplier<Config> config;
     private boolean isCountdownActive;
     private int ticks;
     private int remainingTicks;
     private int initialTicks;
 
-    public CountdownManager(MinecraftServer server, TriggerTracker triggers) {
+    public CountdownManager(MinecraftServer server, TriggerTracker triggers, Supplier<Config> config) {
         this.server = server;
         this.triggers = triggers;
+        this.config = config;
     }
 
     public void startCountdown(long seconds) {
@@ -44,7 +48,7 @@ public class CountdownManager {
     }
 
     public boolean isCountdownActive() {
-        return isCountdownActive && WorldReset.worlds().state() == WorldState.LOADED;
+        return isCountdownActive && WorldReset.worlds(server).state() == WorldState.LOADED;
     }
 
     public void tick() {
@@ -59,7 +63,7 @@ public class CountdownManager {
     }
 
     public void broadcastRestart() {
-        if (!ConfigManager.config().restartMessage) {
+        if (!config.get().restartMessage) {
             return;
         }
         Style style = Style.EMPTY.withBold(true).withColor(ChatFormatting.GREEN);
@@ -84,7 +88,7 @@ public class CountdownManager {
     }
 
     private void playCountdownSounds(int minutes, int seconds) {
-        if (!ConfigManager.config().countdownSounds || minutes != 0 || seconds > COUNTDOWN_SOUND_THRESHOLD) {
+        if (!config.get().countdownSounds || minutes != 0 || seconds > COUNTDOWN_SOUND_THRESHOLD) {
             return;
         }
         final float basePitch = 2.0f;
