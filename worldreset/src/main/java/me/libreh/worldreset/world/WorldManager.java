@@ -47,9 +47,7 @@ public class WorldManager implements WorldPoolHost {
     private final WorldPreloader poolPreloader;
     private @Nullable WorldPool worldPool;
 
-    private boolean resetQueued;
-    private String queuedResetSeed = "";
-    private boolean queuedFromCountdown;
+    private final ResetScheduler scheduler = new ResetScheduler();
 
     private WorldSnapshot activeWorldSnapshot;
 
@@ -131,10 +129,8 @@ public class WorldManager implements WorldPoolHost {
         if (!countdownManager.isCountdownActive()) {
             boolean poolBusy = worldPool != null && !worldPool.isReady();
             if (poolBusy && !hasPendingChanges()) {
-                if (!resetQueued) {
-                    resetQueued = true;
-                    queuedResetSeed = "";
-                    queuedFromCountdown = true;
+                if (!scheduler.hasPending()) {
+                    scheduler.enqueueFromCountdown();
                     broadcastQueuedReset();
                 }
             } else {
@@ -146,15 +142,11 @@ public class WorldManager implements WorldPoolHost {
     }
 
     private void drainQueuedReset() {
-        if (!resetQueued) return;
         if (worldPool == null || !worldPool.isReady()) return;
-        String seed = queuedResetSeed;
-        boolean fromCountdown = queuedFromCountdown;
-        resetQueued = false;
-        queuedResetSeed = "";
-        queuedFromCountdown = false;
-        resetWorlds(seed);
-        if (fromCountdown) countdownManager.continueCountdown();
+        ResetScheduler.Request request = scheduler.take();
+        if (request == null) return;
+        resetWorlds(request.seed());
+        if (request.fromCountdown()) countdownManager.continueCountdown();
     }
 
     private void broadcastQueuedReset() {
@@ -173,14 +165,12 @@ public class WorldManager implements WorldPoolHost {
             commitPendingChanges();
         }
         if (!hadPending && worldPool != null && !worldPool.isReady()) {
-            resetQueued = true;
-            queuedResetSeed = seed;
+            scheduler.enqueue(seed);
             WorldReset.LOGGER.info("Reset queued: pool not ready (state={}, ready={})",
                 worldPool.getState(), worldPool.getReadyCount());
             return false;
         }
-        resetQueued = false;
-        queuedResetSeed = "";
+        scheduler.clear();
         state = WorldState.RESETTING;
         try {
             resetManager.resetWorlds(ConfigManager.config(), seed);
