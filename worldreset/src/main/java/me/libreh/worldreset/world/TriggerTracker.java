@@ -1,11 +1,10 @@
 package me.libreh.worldreset.world;
 
 import eu.pb4.predicate.api.MinecraftPredicate;
-import eu.pb4.predicate.api.PredicateContext;
+import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.Config;
-import me.libreh.worldreset.predicate.AdvancementPredicate;
-import me.libreh.worldreset.predicate.EntityDeathPredicate;
-import me.libreh.worldreset.predicate.PortalEnterPredicate;
+import me.libreh.worldreset.predicate.Trigger;
+import me.libreh.worldreset.predicate.TriggerState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
@@ -13,9 +12,15 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
-import me.libreh.worldreset.WorldReset;
+import org.jetbrains.annotations.Nullable;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.function.Predicate;
 import java.util.function.Supplier;
 
 public class TriggerTracker {
@@ -25,8 +30,7 @@ public class TriggerTracker {
     private final Supplier<Config> config;
 
     private final Map<UUID, PendingPortal> pendingPortalEntries = new HashMap<>();
-    private final TriggerListState stopState = new TriggerListState();
-    private final TriggerListState resetState = new TriggerListState();
+    private final Map<MinecraftPredicate, TriggerState> states = new IdentityHashMap<>();
 
     public TriggerTracker(MinecraftServer server, Supplier<Config> config) {
         this.server = server;
@@ -35,8 +39,7 @@ public class TriggerTracker {
 
     public void reset() {
         pendingPortalEntries.clear();
-        stopState.clear();
-        resetState.clear();
+        states.clear();
     }
 
     public void notePortalTouch(ServerPlayer player, Identifier blockId) {
@@ -50,116 +53,53 @@ public class TriggerTracker {
         PendingPortal pending = pendingPortalEntries.remove(player.getUUID());
         if (pending == null) return false;
         if (server.getTickCount() - pending.tick > PORTAL_TELEPORT_WINDOW_TICKS) return false;
-
-        Config cfg = config.get();
-        boolean any = false;
-        any |= checkPortal(stopState, cfg.stopTriggers, player, pending.blockId, pending.originDimension);
-        any |= checkPortal(resetState, cfg.resetTriggers, player, pending.blockId, pending.originDimension);
-        return any;
+        return note(state -> state.notePortal(player, pending.blockId, pending.originDimension));
     }
 
     public boolean noteEntityDeath(Identifier entityId, Entity entity) {
-        Config cfg = config.get();
-        boolean any = false;
-        any |= checkEntityDeath(stopState, cfg.stopTriggers, entityId, entity);
-        any |= checkEntityDeath(resetState, cfg.resetTriggers, entityId, entity);
-        return any;
+        return note(state -> state.noteDeath(entityId, entity));
     }
 
     public boolean noteAdvancement(ServerPlayer player, Identifier advancementId) {
-        Config cfg = config.get();
-        boolean any = false;
-        any |= checkAdvancement(stopState, cfg.stopTriggers, player, advancementId);
-        any |= checkAdvancement(resetState, cfg.resetTriggers, player, advancementId);
-        return any;
+        return note(state -> state.noteAdvancement(player, advancementId));
     }
 
     public boolean shouldStop() {
-        return stopState.shouldTrigger(config.get().stopTriggers, server.getPlayerList().getPlayers().size());
+        return anySatisfied(config.get().stopTriggers);
     }
 
     public boolean shouldReset() {
-        return resetState.shouldTrigger(config.get().resetTriggers, server.getPlayerList().getPlayers().size());
+        return anySatisfied(config.get().resetTriggers);
     }
 
-    private boolean checkPortal(TriggerListState state, List<MinecraftPredicate> triggers, ServerPlayer player, Identifier blockId, ResourceKey<Level> originDimension) {
+    private boolean note(Predicate<TriggerState> event) {
         boolean any = false;
-        for (int i = 0; i < triggers.size(); i++) {
-            MinecraftPredicate c = triggers.get(i);
-            if (c instanceof PortalEnterPredicate pe && pe.block().equals(blockId) && pe.matchesDimension(originDimension)) {
-                if (pe.test(PredicateContext.of(player)).success()) {
-                    state.portalEntered.computeIfAbsent(i, k -> new HashSet<>()).add(player.getUUID());
-                    any = true;
-                }
-            }
+        for (MinecraftPredicate trigger : allTriggers()) {
+            TriggerState state = stateFor(trigger);
+            if (state != null && event.test(state)) any = true;
         }
         return any;
     }
 
-    private boolean checkEntityDeath(TriggerListState state, List<MinecraftPredicate> triggers, Identifier entityId, Entity entity) {
-        boolean any = false;
-        for (int i = 0; i < triggers.size(); i++) {
-            MinecraftPredicate c = triggers.get(i);
-            if (c instanceof EntityDeathPredicate ed && ed.entity().equals(entityId)) {
-                if (ed.test(PredicateContext.of(entity)).success()) {
-                    state.entityDeathTriggered.add(i);
-                    any = true;
-                }
-            }
+    private boolean anySatisfied(List<MinecraftPredicate> triggers) {
+        int playerCount = server.getPlayerList().getPlayers().size();
+        for (MinecraftPredicate trigger : triggers) {
+            TriggerState state = states.get(trigger);
+            if (state != null && state.isSatisfied(playerCount)) return true;
         }
-        return any;
+        return false;
     }
 
-    private boolean checkAdvancement(TriggerListState state, List<MinecraftPredicate> triggers, ServerPlayer player, Identifier advancementId) {
-        boolean any = false;
-        for (int i = 0; i < triggers.size(); i++) {
-            MinecraftPredicate c = triggers.get(i);
-            if (c instanceof AdvancementPredicate adv && adv.advancement().equals(advancementId)) {
-                if (adv.test(PredicateContext.of(player)).success()) {
-                    state.advancementAwarded.computeIfAbsent(i, k -> new HashSet<>()).add(player.getUUID());
-                    any = true;
-                }
-            }
-        }
-        return any;
+    private @Nullable TriggerState stateFor(MinecraftPredicate predicate) {
+        if (!(predicate instanceof Trigger trigger)) return null;
+        return states.computeIfAbsent(predicate, k -> trigger.newState());
     }
 
-    private static class TriggerListState {
-        final Map<Integer, Set<UUID>> portalEntered = new HashMap<>();
-        final Set<Integer> entityDeathTriggered = new HashSet<>();
-        final Map<Integer, Set<UUID>> advancementAwarded = new HashMap<>();
-
-        void clear() {
-            portalEntered.clear();
-            entityDeathTriggered.clear();
-            advancementAwarded.clear();
-        }
-
-        boolean shouldTrigger(List<MinecraftPredicate> triggers, int playerCount) {
-            for (int i = 0; i < triggers.size(); i++) {
-                MinecraftPredicate c = triggers.get(i);
-                if (c instanceof PortalEnterPredicate pe) {
-                    Set<UUID> entered = portalEntered.get(i);
-                    if (entered == null) continue;
-                    if (pe.requireAllPlayers()) {
-                        if (playerCount > 0 && entered.size() >= playerCount) return true;
-                    } else if (!entered.isEmpty()) {
-                        return true;
-                    }
-                } else if (c instanceof EntityDeathPredicate) {
-                    if (entityDeathTriggered.contains(i)) return true;
-                } else if (c instanceof AdvancementPredicate adv) {
-                    Set<UUID> awarded = advancementAwarded.get(i);
-                    if (awarded == null) continue;
-                    if (adv.requireAllPlayers()) {
-                        if (playerCount > 0 && awarded.size() >= playerCount) return true;
-                    } else if (!awarded.isEmpty()) {
-                        return true;
-                    }
-                }
-            }
-            return false;
-        }
+    private List<MinecraftPredicate> allTriggers() {
+        Config cfg = config.get();
+        List<MinecraftPredicate> all = new ArrayList<>(cfg.stopTriggers);
+        all.addAll(cfg.resetTriggers);
+        return all;
     }
 
     private record PendingPortal(Identifier blockId, ResourceKey<Level> originDimension, int tick) {}

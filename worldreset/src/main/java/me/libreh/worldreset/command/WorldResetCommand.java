@@ -15,6 +15,7 @@ import me.libreh.worldreset.config.SpawnType;
 import me.libreh.worldreset.predicate.AdvancementPredicate;
 import me.libreh.worldreset.predicate.EntityDeathPredicate;
 import me.libreh.worldreset.predicate.PortalEnterPredicate;
+import me.libreh.worldreset.predicate.Trigger;
 import me.libreh.worldreset.util.TimeUtil;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.AdvancementHolder;
@@ -311,16 +312,6 @@ public final class WorldResetCommand {
     }
 
     private static String describe(MinecraftPredicate c) {
-        if (c instanceof PortalEnterPredicate pe) {
-            String desc = "portal " + pe.block();
-            if (pe.originDimension().isPresent()) desc += " from " + pe.originDimension().get();
-            desc += pe.requireAllPlayers() ? " (all players)" : " (any player)";
-            return desc;
-        } else if (c instanceof EntityDeathPredicate ed) {
-            return "death " + ed.entity();
-        } else if (c instanceof AdvancementPredicate adv) {
-            return "advancement " + adv.advancement() + (adv.requireAllPlayers() ? " (all players)" : " (any player)");
-        }
-        return c.identifier().toString();
+        return c instanceof Trigger trigger ? trigger.describe() : c.identifier().toString();
     }
 }

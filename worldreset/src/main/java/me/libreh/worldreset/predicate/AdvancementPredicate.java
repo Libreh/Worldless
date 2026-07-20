@@ -9,10 +9,14 @@ import eu.pb4.predicate.api.PredicateContext;
 import eu.pb4.predicate.api.PredicateResult;
 import eu.pb4.predicate.api.PredicateRegistry;
 import net.minecraft.resources.Identifier;
+import net.minecraft.server.level.ServerPlayer;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
-public final class AdvancementPredicate extends AbstractPredicate {
+public final class AdvancementPredicate extends AbstractPredicate implements Trigger {
     public static final Identifier ID = Identifier.parse("worldreset:advancement");
 
     public static final MapCodec<AdvancementPredicate> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -47,5 +51,35 @@ public final class AdvancementPredicate extends AbstractPredicate {
     @Override
     public PredicateResult<?> test(PredicateContext context) {
         return filter.isEmpty() ? PredicateResult.ofSuccess() : filter.get().test(context);
+    }
+
+    @Override
+    public TriggerState newState() {
+        return new AdvancementState();
+    }
+
+    @Override
+    public String describe() {
+        return "advancement " + advancement + (requireAllPlayers ? " (all players)" : " (any player)");
+    }
+
+    private final class AdvancementState implements TriggerState {
+        private final Set<UUID> awarded = new HashSet<>();
+
+        @Override
+        public boolean noteAdvancement(ServerPlayer player, Identifier advancementId) {
+            if (advancement.equals(advancementId) && test(PredicateContext.of(player)).success()) {
+                awarded.add(player.getUUID());
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean isSatisfied(int playerCount) {
+            return requireAllPlayers
+                ? (playerCount > 0 && awarded.size() >= playerCount)
+                : !awarded.isEmpty();
+        }
     }
 }

@@ -10,11 +10,15 @@ import eu.pb4.predicate.api.PredicateResult;
 import eu.pb4.predicate.api.PredicateRegistry;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
+import java.util.UUID;
 
-public final class PortalEnterPredicate extends AbstractPredicate {
+public final class PortalEnterPredicate extends AbstractPredicate implements Trigger {
     public static final Identifier ID = Identifier.parse("worldreset:portal_enter");
 
     public static final MapCodec<PortalEnterPredicate> CODEC = RecordCodecBuilder.mapCodec(instance -> instance.group(
@@ -60,5 +64,38 @@ public final class PortalEnterPredicate extends AbstractPredicate {
     @Override
     public PredicateResult<?> test(PredicateContext context) {
         return filter.isEmpty() ? PredicateResult.ofSuccess() : filter.get().test(context);
+    }
+
+    @Override
+    public TriggerState newState() {
+        return new PortalState();
+    }
+
+    @Override
+    public String describe() {
+        String desc = "portal " + block;
+        if (originDimension.isPresent()) desc += " from " + originDimension.get();
+        desc += requireAllPlayers ? " (all players)" : " (any player)";
+        return desc;
+    }
+
+    private final class PortalState implements TriggerState {
+        private final Set<UUID> entered = new HashSet<>();
+
+        @Override
+        public boolean notePortal(ServerPlayer player, Identifier blockId, ResourceKey<Level> originDim) {
+            if (block.equals(blockId) && matchesDimension(originDim) && test(PredicateContext.of(player)).success()) {
+                entered.add(player.getUUID());
+                return true;
+            }
+            return false;
+        }
+
+        @Override
+        public boolean isSatisfied(int playerCount) {
+            return requireAllPlayers
+                ? (playerCount > 0 && entered.size() >= playerCount)
+                : !entered.isEmpty();
+        }
     }
 }
