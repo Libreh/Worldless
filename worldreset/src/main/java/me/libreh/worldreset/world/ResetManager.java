@@ -71,23 +71,12 @@ public class ResetManager {
     }
 
     private void resetWithPoolDirect(Config cfg, WorldPool pool, PooledWorlds pooled) {
-        tickKeepAlive();
-        stopAllRaids();
-        saveWorldData();
+        LiveWorlds live = beginReset();
 
-        CustomLevel liveOverworld = worldManager.getGameOverworld();
-        CustomLevel liveNether = worldManager.getGameNether();
-        CustomLevel liveEnd = worldManager.getGameEnd();
-        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
-        ScoreboardClear.clearAll(server);
-
-        pool.registerPooledWorlds(pooled);
-        worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
-        WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
+        adoptPooledWorlds(pool, pooled);
 
         ServerLevel gameOverworld = worldManager.getGameOverworld();
         BlockPos spawn = pooled.spawn() != null ? pooled.spawn() : SpawnFinder.findSpawn(gameOverworld);
-
         for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
             if (!player.isAlive()) {
                 playerManager.respawnInto(player, gameOverworld, spawn);
@@ -97,71 +86,81 @@ public class ResetManager {
         postReset(cfg, pooled.spawn());
 
         tickKeepAlive();
-        ResetFlags.skipCloseSave.set(true);
-        try {
-            worldManager.getWorldPreloader().reset();
-            for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
-                if (level != null) WorldDeletion.deleteDimensionAsync(server, level);
-            }
-            while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
-        } finally {
-            ResetFlags.skipCloseSave.set(false);
-        }
+        withSkipCloseSave(() -> deleteOldWorlds(live));
     }
 
     private void resetWithPoolViaLobby(Config cfg, WorldPool pool, PooledWorlds pooled) {
-        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
-            playerManager.preparePlayerForReset(player);
-        }
+        movePlayersToLobby();
+        LiveWorlds live = beginReset();
 
-        tickKeepAlive();
-        stopAllRaids();
-        saveWorldData();
-
-        CustomLevel liveOverworld = worldManager.getGameOverworld();
-        CustomLevel liveNether = worldManager.getGameNether();
-        CustomLevel liveEnd = worldManager.getGameEnd();
-        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
-        ScoreboardClear.clearAll(server);
-
-        ResetFlags.skipCloseSave.set(true);
-        try {
-            worldManager.getWorldPreloader().reset();
-            for (CustomLevel level : new CustomLevel[]{liveOverworld, liveNether, liveEnd}) {
-                if (level != null) WorldDeletion.deleteDimensionAsync(server, level);
-            }
-            while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
-            pool.registerPooledWorlds(pooled);
-            worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
-            WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
-        } finally {
-            ResetFlags.skipCloseSave.set(false);
-        }
+        withSkipCloseSave(() -> {
+            deleteOldWorlds(live);
+            adoptPooledWorlds(pool, pooled);
+        });
 
         postReset(cfg, pooled.spawn());
     }
 
     private void resetInPlace(Config cfg, long seed) {
-        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
-            playerManager.preparePlayerForReset(player);
-        }
+        movePlayersToLobby();
+        LiveWorlds live = beginReset();
 
-        tickKeepAlive();
-        stopAllRaids();
-        saveWorldData();
-
-        CustomLevel liveOverworld = worldManager.getGameOverworld();
-        CustomLevel liveNether = worldManager.getGameNether();
-        CustomLevel liveEnd = worldManager.getGameEnd();
-        BossEvents.clearForLevels(liveOverworld, liveNether, liveEnd);
-        ScoreboardClear.clearAll(server);
-
-        WorldDeletion.resetWorldChunks(server, liveOverworld, liveNether, liveEnd);
+        WorldDeletion.resetWorldChunks(server, live.overworld(), live.nether(), live.end());
         tickKeepAlive();
         createGameWorlds(seed);
         BlockPos customSpawn = SpawnSearch.findSpawn(worldManager.getGameOverworld(), cfg.spawnNear, server);
 
         postReset(cfg, customSpawn);
+    }
+
+    private LiveWorlds beginReset() {
+        tickKeepAlive();
+        stopAllRaids();
+        saveWorldData();
+        LiveWorlds live = new LiveWorlds(
+            worldManager.getGameOverworld(), worldManager.getGameNether(), worldManager.getGameEnd());
+        BossEvents.clearForLevels(live.overworld(), live.nether(), live.end());
+        ScoreboardClear.clearAll(server);
+        return live;
+    }
+
+    private void movePlayersToLobby() {
+        for (ServerPlayer player : List.copyOf(server.getPlayerList().getPlayers())) {
+            playerManager.preparePlayerForReset(player);
+        }
+    }
+
+    private void adoptPooledWorlds(WorldPool pool, PooledWorlds pooled) {
+        pool.registerPooledWorlds(pooled);
+        worldManager.setGameWorlds(pooled.overworld(), pooled.nether(), pooled.end());
+        WorldReset.LOGGER.info("Adopted pooled worlds (seed={})", pooled.seed());
+    }
+
+    private void deleteOldWorlds(LiveWorlds live) {
+        worldManager.getWorldPreloader().reset();
+        for (CustomLevel level : live.all()) {
+            if (level != null) WorldDeletion.deleteDimensionAsync(server, level);
+        }
+        drainServerTasks();
+    }
+
+    private void drainServerTasks() {
+        while (((MinecraftServerPollTaskAccessor) server).worldreset$invokePollTask()) {}
+    }
+
+    private void withSkipCloseSave(Runnable action) {
+        ResetFlags.skipCloseSave.set(true);
+        try {
+            action.run();
+        } finally {
+            ResetFlags.skipCloseSave.set(false);
+        }
+    }
+
+    private record LiveWorlds(@Nullable CustomLevel overworld, @Nullable CustomLevel nether, @Nullable CustomLevel end) {
+        CustomLevel[] all() {
+            return new CustomLevel[]{overworld, nether, end};
+        }
     }
 
     public void createGameWorlds(long seed) {
