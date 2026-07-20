@@ -11,6 +11,7 @@ import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
 import eu.pb4.predicate.api.MinecraftPredicate;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
+import me.libreh.worldreset.config.SpawnType;
 import me.libreh.worldreset.predicate.AdvancementPredicate;
 import me.libreh.worldreset.predicate.EntityDeathPredicate;
 import me.libreh.worldreset.predicate.PortalEnterPredicate;
@@ -73,14 +74,14 @@ public final class WorldResetCommand {
                 .then(Commands.literal("spawn")
                         .requires(src -> WorldReset.hasPermission(src, "spawn"))
                         .then(Commands.literal("none")
-                                .executes(ctx -> setSpawnType(ctx.getSource(), "none", "")))
+                                .executes(ctx -> setSpawnType(ctx.getSource(), SpawnType.NONE, "")))
                         .then(Commands.literal("structure")
                                 .then(Commands.argument("id", ResourceOrTagKeyArgument.resourceOrTagKey(Registries.STRUCTURE))
-                                        .executes(ctx -> setSpawnType(ctx.getSource(), "structure",
+                                        .executes(ctx -> setSpawnType(ctx.getSource(), SpawnType.STRUCTURE,
                                                 ResourceOrTagKeyArgument.getResourceOrTagKey(ctx, "id", Registries.STRUCTURE, INVALID_STRUCTURE).asPrintable()))))
                         .then(Commands.literal("biome")
                                 .then(Commands.argument("id", ResourceOrTagArgument.resourceOrTag(buildContext, Registries.BIOME))
-                                        .executes(ctx -> setSpawnType(ctx.getSource(), "biome",
+                                        .executes(ctx -> setSpawnType(ctx.getSource(), SpawnType.BIOME,
                                                 ResourceOrTagArgument.getResourceOrTag(ctx, "id", Registries.BIOME).asPrintable()))))
                         .then(Commands.literal("offset")
                                 .then(Commands.argument("blocks", IntegerArgumentType.integer(0))
@@ -188,12 +189,12 @@ public final class WorldResetCommand {
         return 1;
     }
 
-    private static int setSpawnType(CommandSourceStack source, String type, String target) {
+    private static int setSpawnType(CommandSourceStack source, SpawnType type, String target) {
         ConfigManager.config().spawnNear.type = type;
         ConfigManager.config().spawnNear.target = target;
         ConfigManager.save();
         MutableComponent base;
-        if (type.equals("none")) {
+        if (type == SpawnType.NONE) {
             base = Component.literal("Spawn near disabled");
         } else {
             base = Component.literal("Spawn near set to " + type + ": " + target);

@@ -84,7 +84,7 @@ public class Config {
 
     public static class SpawnNear {
         @SerializedName("type")
-        public String type = "none";
+        public SpawnType type = SpawnType.NONE;
 
         @SerializedName("target")
         public String target = "";

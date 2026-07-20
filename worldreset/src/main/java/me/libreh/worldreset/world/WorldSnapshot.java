@@ -1,10 +1,11 @@
 package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.config.Config;
+import me.libreh.worldreset.config.SpawnType;
 
 public record WorldSnapshot(
     String seed,
-    String spawnType,
+    SpawnType spawnType,
     String spawnTarget,
     int spawnOffset,
     boolean spawnRequireSurface

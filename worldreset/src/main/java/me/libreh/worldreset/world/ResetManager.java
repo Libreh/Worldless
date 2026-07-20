@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.api.*;
 import me.libreh.worldreset.config.Config;
+import me.libreh.worldreset.config.SpawnType;
 import me.libreh.worldreset.mixin.world.MinecraftServerPollTaskAccessor;
 import me.libreh.worldreset.mixin.world.RaidsAccessor;
 import me.libreh.worldreset.mixin.world.ServerChunkCacheAccessor;
@@ -227,7 +228,7 @@ public class ResetManager {
         BlockPos respawnPos = setWorldSpawn(customSpawn);
 
         Set<UUID> processedPlayers = new HashSet<>();
-        boolean spawnNearNone = cfg.spawnNear.type.equals("none");
+        boolean spawnNearNone = cfg.spawnNear.type == SpawnType.NONE;
         for (ServerPlayer player : server.getPlayerList().getPlayers()) {
             if (customSpawn != null && !spawnNearNone) {
                 player.teleportTo(gameOverworld,

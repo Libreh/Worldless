@@ -4,6 +4,7 @@ import com.mojang.datafixers.util.Pair;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.api.SpawnFinder;
 import me.libreh.worldreset.config.Config;
+import me.libreh.worldreset.config.SpawnType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.HolderSet;
@@ -29,7 +30,7 @@ public final class SpawnSearch {
     private SpawnSearch() {}
 
     public static @Nullable BlockPos findSpawn(ServerLevel overworld, Config.SpawnNear spawnNear, MinecraftServer server) {
-        if (!spawnNear.type.equals("none") && !spawnNear.target.isEmpty()) {
+        if (spawnNear.type != SpawnType.NONE && !spawnNear.target.isEmpty()) {
             BlockPos located = null;
             BlockPos searchOrigin = BlockPos.ZERO;
 
@@ -85,7 +86,7 @@ public final class SpawnSearch {
     }
 
     private static @Nullable BlockPos findSpawnTarget(ServerLevel overworld, Config.SpawnNear spawnNear, BlockPos searchOrigin) {
-        if (spawnNear.type.equals("structure")) {
+        if (spawnNear.type == SpawnType.STRUCTURE) {
             var registry = overworld.registryAccess().lookupOrThrow(Registries.STRUCTURE);
             HolderSet<Structure> holderSet;
             if (spawnNear.target.startsWith("#")) {
@@ -117,7 +118,7 @@ public final class SpawnSearch {
             }
             return pos;
 
-        } else if (spawnNear.type.equals("biome")) {
+        } else if (spawnNear.type == SpawnType.BIOME) {
             Predicate<Holder<Biome>> predicate;
             if (spawnNear.target.startsWith("#")) {
                 TagKey<Biome> tagKey = TagKey.create(Registries.BIOME, Identifier.parse(spawnNear.target.substring(1)));
