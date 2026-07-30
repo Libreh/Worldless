@@ -18,8 +18,7 @@ public final class GameWorlds {
             ResourceKey<Level> overworldKey,
             ResourceKey<Level> netherKey,
             ResourceKey<Level> endKey,
-            long seed,
-            boolean registerWorldborderListeners
+            long seed
     ) {
         VanillaLikeLevelsBuilder builder = new VanillaLikeLevelsBuilder();
         builder.set(VanillaDimension.Overworld, new CustomLevelBuilder()
@@ -42,12 +41,6 @@ public final class GameWorlds {
         ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Overworld));
         ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Nether));
         ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.End));
-
-        if (registerWorldborderListeners) {
-            server.getPlayerList().addWorldborderListener(levels.getOrThrow(VanillaDimension.Overworld));
-            server.getPlayerList().addWorldborderListener(levels.getOrThrow(VanillaDimension.Nether));
-            server.getPlayerList().addWorldborderListener(levels.getOrThrow(VanillaDimension.End));
-        }
 
         return levels;
     }

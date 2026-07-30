@@ -11,6 +11,7 @@
     "world.MinecraftServerPrepareLevelsMixin",
     "world.MinecraftServerSaveMixin",
     "world.PersistentEntitySectionManagerSkipSaveMixin",
+    "world.RaidsAccessor",
     "world.SavedDataStorageSkipSaveMixin",
     "world.ServerChunkCacheAccessor",
     "world.ServerChunkCacheSkipSaveMixin",

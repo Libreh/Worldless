@@ -1,9 +1,6 @@
 package me.libreh.worldreset.api;
 
-import me.libreh.worldreset.mixin.world.ChunkMapAccessor;
-import me.libreh.worldreset.mixin.world.ServerChunkCacheAccessor;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.TicketType;
@@ -129,32 +126,11 @@ public class WorldPreloader {
         return preloadingComplete;
     }
 
-    public Component getChunkLoadingMessage() {
-        long loaded = chunkFutures.stream()
-            .filter(CompletableFuture::isDone)
-            .count();
-        long total = chunkFutures.size();
-
-        return Component.translatable("worldreset.world.loading_terrain", loaded, total);
-    }
-
     public boolean isPreloading() {
         if (!preloading || chunkFutures.isEmpty()) {
             return false;
         }
         return chunkFutures.stream().anyMatch(future -> !future.isDone());
-    }
-
-    public boolean hasChunks() {
-        return !chunkFutures.isEmpty();
-    }
-
-    public int loadedChunkCount() {
-        int loaded = 0;
-        for (CompletableFuture<ChunkAccess> future : chunkFutures) {
-            if (future.isDone()) loaded++;
-        }
-        return loaded;
     }
 
     @SuppressWarnings("unchecked")
@@ -166,11 +142,10 @@ public class WorldPreloader {
         var chunkManager = level.getChunkSource();
         chunkManager.addTicketAndLoadWithRadius(ASYNC_CHUNK_TICKET, chunkPos, 0);
 
-        ((ServerChunkCacheAccessor) chunkManager).worldreset$invokeRunDistanceManagerUpdates();
+        ChunkLoading.runDistanceManagerUpdates(chunkManager);
 
         var loadingManager = chunkManager.chunkMap;
-        var chunkHolder = ((ChunkMapAccessor) loadingManager)
-            .worldreset$invokeGetVisibleChunkIfPresent(chunkPos.pack());
+        var chunkHolder = ChunkLoading.getVisibleChunkNow(loadingManager, chunkPos);
 
         var chunkFuture = (chunkHolder != null
             ? chunkHolder.scheduleChunkGenerationTask(ChunkStatus.FULL, loadingManager)

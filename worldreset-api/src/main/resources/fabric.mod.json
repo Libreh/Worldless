@@ -13,6 +13,11 @@
 	},
 	"license": "LGPLv3",
 	"environment": "*",
+	"entrypoints": {
+		"main": [
+			"me.libreh.worldreset.api.WorldResetApiInit"
+		]
+	},
 	"mixins": [
 		"worldreset-api.mixins.json",
 		"c2me-compat.mixins.json"
@@ -23,6 +28,7 @@
 	"depends": {
 		"fabricloader": ">=0.19.1",
 		"minecraft": "~26.1.2",
-		"java": ">=25"
+		"java": ">=25",
+		"fabric-api": "*"
 	}
 }

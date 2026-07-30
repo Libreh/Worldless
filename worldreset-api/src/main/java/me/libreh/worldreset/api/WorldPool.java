@@ -1,43 +1,47 @@
 package me.libreh.worldreset.api;
 
-import net.casual.arcade.dimensions.ArcadeDimensions;
 import net.casual.arcade.dimensions.level.CustomLevel;
-import net.casual.arcade.dimensions.level.LevelPersistence;
-import net.casual.arcade.dimensions.level.builder.CustomLevelBuilder;
 import net.casual.arcade.dimensions.level.vanilla.VanillaDimension;
 import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevels;
-import net.casual.arcade.dimensions.level.vanilla.VanillaLikeLevelsBuilder;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.Level;
-import org.jspecify.annotations.Nullable;
+import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-public class WorldPool {
+public class WorldPool<T> {
     private static final Logger LOGGER = LoggerFactory.getLogger(WorldPool.class);
+    private static final int STALL_TICKS = 20 * 90;
+    private static final BlockPos FALLBACK_PRELOAD_CENTER = new BlockPos(0, 64, 0);
 
     private final MinecraftServer server;
-    private final WorldPoolHost host;
+    private final WorldPoolHost<T> host;
     private final ServerTaskExecutor taskExecutor;
     private final WorldPreloader preloader;
     private final String modId;
 
-    private final ConcurrentLinkedQueue<PooledWorlds> readyPool = new ConcurrentLinkedQueue<>();
+    private final ConcurrentLinkedQueue<PooledWorlds<T>> readyPool = new ConcurrentLinkedQueue<>();
     private PoolState state = PoolState.IDLE;
+    private long stateEnteredAtTick = -1;
 
     private long pendingSeed;
     private VanillaLikeLevels pendingLevels;
     private ServerLevel pendingOverworld;
     private BlockPos pendingSpawn;
+    private @Nullable T pendingData;
     private CompletableFuture<VanillaLikeLevels> worldCreationFuture;
-    private CompletableFuture<BlockPos> spawnSearchFuture;
+    private CompletableFuture<WorldPoolHost.SpawnResult<T>> spawnSearchFuture;
     private CompletableFuture<Void> preloadFuture;
+
+    private List<ResourceKey<Level>> currentKeys = List.of();
+    private List<ResourceKey<Level>> previousKeys = List.of();
 
     public enum PoolState {
         IDLE,
@@ -46,12 +50,21 @@ public class WorldPool {
         PRELOADING
     }
 
-    public WorldPool(MinecraftServer server, WorldPoolHost host, ServerTaskExecutor taskExecutor, WorldPreloader preloader, String modId) {
+    public WorldPool(MinecraftServer server, WorldPoolHost<T> host, ServerTaskExecutor taskExecutor, WorldPreloader preloader, String modId) {
         this.server = server;
         this.host = host;
         this.taskExecutor = taskExecutor;
         this.preloader = preloader;
         this.modId = modId;
+    }
+
+    private void setState(PoolState newState) {
+        this.state = newState;
+        this.stateEnteredAtTick = server.getTickCount();
+    }
+
+    private boolean isStalled() {
+        return stateEnteredAtTick >= 0 && server.getTickCount() - stateEnteredAtTick > STALL_TICKS;
     }
 
     private ResourceKey<Level> generatePoolKey(String dimensionType) {
@@ -60,22 +73,34 @@ public class WorldPool {
 
     public void kickOff(long seed) {
         if (state != PoolState.IDLE || readyPool.size() >= host.maxPoolSize()) {
-            LOGGER.warn("WorldPool.kickOff called while state is {} (pool size={}), ignoring", state, readyPool.size());
+            if (readyPool.size() >= host.maxPoolSize()) {
+                LOGGER.warn("WorldPool.kickOff called while pool is full (size={}), ignoring", readyPool.size());
+            } else {
+                LOGGER.warn("WorldPool.kickOff called while state is {}, ignoring", state);
+            }
             return;
         }
         this.pendingSeed = seed;
-        this.state = PoolState.CREATING;
+        this.pendingData = null;
+        setState(PoolState.CREATING);
         LOGGER.info("WorldPool: starting background generation (seed={})", seed);
     }
 
     public void tick() {
-        if (state == PoolState.IDLE) {
-            if (readyPool.size() < host.maxPoolSize()) {
-                kickOff(host.nextSeed());
-            }
-            return;
+        tick(true);
+    }
+
+    public void tick(boolean allowKickOff) {
+        if (state != PoolState.IDLE && isStalled()) {
+            LOGGER.error("WorldPool: stuck in {} for over {} ticks, forcing recovery", state, STALL_TICKS);
+            cleanup();
         }
         switch (state) {
+            case IDLE -> {
+                if (allowKickOff && readyPool.size() < host.maxPoolSize()) {
+                    kickOff(host.nextSeed());
+                }
+            }
             case CREATING -> tickCreating();
             case SPAWN_FINDING -> tickSpawnFinding();
             case PRELOADING -> tickPreloading();
@@ -104,63 +129,44 @@ public class WorldPool {
             this.pendingLevels = levels;
             this.pendingOverworld = levels.getOrThrow(VanillaDimension.Overworld);
             this.spawnSearchFuture = host.findSpawn(pendingOverworld);
-            this.state = PoolState.SPAWN_FINDING;
+            setState(PoolState.SPAWN_FINDING);
         } catch (Exception e) {
             LOGGER.error("WorldPool: world creation failed", e);
-            state = PoolState.IDLE;
+            setState(PoolState.IDLE);
             worldCreationFuture = null;
         }
     }
 
     private VanillaLikeLevels buildPoolWorlds(long seed) {
-        ResourceKey<Level> overworldKey = generatePoolKey("overworld");
-        ResourceKey<Level> netherKey = generatePoolKey("nether");
-        ResourceKey<Level> endKey = generatePoolKey("end");
-
-        VanillaLikeLevelsBuilder builder = new VanillaLikeLevelsBuilder();
-        builder.set(VanillaDimension.Overworld, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.Overworld)
-            .dimensionKey(overworldKey)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        builder.set(VanillaDimension.Nether, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.Nether)
-            .dimensionKey(netherKey)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        builder.set(VanillaDimension.End, new CustomLevelBuilder()
-            .vanillaDefaults(VanillaDimension.End)
-            .dimensionKey(endKey)
-            .seed(seed)
-            .persistence(LevelPersistence.Persistent));
-        VanillaLikeLevels levels = builder.build(server);
-
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Overworld));
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.Nether));
-        ArcadeDimensions.add(server, levels.getOrThrow(VanillaDimension.End));
-
-        return levels;
+        return GameWorlds.create(
+            server,
+            generatePoolKey("overworld"),
+            generatePoolKey("nether"),
+            generatePoolKey("end"),
+            seed
+        );
     }
 
     private void tickSpawnFinding() {
         if (spawnSearchFuture == null || !spawnSearchFuture.isDone()) return;
 
         try {
-            BlockPos spawn = spawnSearchFuture.getNow(null);
-            pendingSpawn = spawn;
+            WorldPoolHost.SpawnResult<T> result = spawnSearchFuture.getNow(null);
             spawnSearchFuture = null;
-            if (spawn != null) {
-                LOGGER.info("WorldPool: spawn found at {}", spawn);
+            pendingSpawn = result != null ? result.spawn() : null;
+            pendingData = result != null ? result.data() : null;
+            if (pendingSpawn != null) {
+                LOGGER.info("WorldPool: spawn found at {}", pendingSpawn);
             } else {
                 LOGGER.info("WorldPool: spawn search returned null, will use default on adoption");
             }
         } catch (Exception e) {
             LOGGER.error("WorldPool: spawn search failed, will use default on adoption", e);
             pendingSpawn = null;
+            pendingData = null;
             spawnSearchFuture = null;
         }
-        BlockPos preloadCenter = pendingSpawn != null ? pendingSpawn : new BlockPos(0, 64, 0);
-        startPreloading(preloadCenter);
+        startPreloading(pendingSpawn != null ? pendingSpawn : FALLBACK_PRELOAD_CENTER);
     }
 
     private void startPreloading(BlockPos center) {
@@ -172,7 +178,7 @@ public class WorldPool {
 
         preloader.reset();
         preloadFuture = preloader.startPreloading(pendingOverworld, center, distance);
-        state = PoolState.PRELOADING;
+        setState(PoolState.PRELOADING);
         LOGGER.info("WorldPool: preloading terrain");
     }
 
@@ -180,48 +186,54 @@ public class WorldPool {
         if (preloadFuture == null || !preloadFuture.isDone()) return;
         if (preloadFuture.isCompletedExceptionally()) {
             LOGGER.info("WorldPool: preload interrupted, restarting");
-            startPreloading(pendingSpawn);
+            startPreloading(pendingSpawn != null ? pendingSpawn : FALLBACK_PRELOAD_CENTER);
             return;
         }
         finalizePool();
     }
 
     private void finalizePool() {
-        PooledWorlds pooled = new PooledWorlds(
+        PooledWorlds<T> pooled = new PooledWorlds<>(
             pendingLevels.getOrThrow(VanillaDimension.Overworld),
             pendingLevels.getOrThrow(VanillaDimension.Nether),
             pendingLevels.getOrThrow(VanillaDimension.End),
             pendingSeed,
-            pendingSpawn
+            pendingSpawn,
+            pendingData
         );
         readyPool.add(pooled);
-        state = PoolState.IDLE;
+        setState(PoolState.IDLE);
         pendingLevels = null;
         pendingOverworld = null;
         pendingSpawn = null;
+        pendingData = null;
         LOGGER.info("WorldPool: world ready (seed={}), pool size={}", pooled.seed(), readyPool.size());
     }
 
     @Nullable
-    public PooledWorlds claim() {
-        PooledWorlds result = readyPool.poll();
+    public PooledWorlds<T> claim() {
+        PooledWorlds<T> result = readyPool.poll();
         if (result == null) return null;
         LOGGER.info("WorldPool: claimed pooled world, remaining={}", readyPool.size());
         return result;
     }
 
-    public void registerPooledWorlds(PooledWorlds pooled) {
+    public void registerPooledWorlds(PooledWorlds<T> pooled) {
+        this.previousKeys = this.currentKeys;
+        this.currentKeys = List.of(pooled.overworld().dimension(), pooled.nether().dimension(), pooled.end().dimension());
+
         server.getPlayerList().addWorldborderListener(pooled.overworld());
         server.getPlayerList().addWorldborderListener(pooled.nether());
         server.getPlayerList().addWorldborderListener(pooled.end());
     }
 
-    public boolean isReady() {
-        return !readyPool.isEmpty();
+    // Keys of the previously adopted trio; lets hosts delete leftovers that survived a reset.
+    public List<ResourceKey<Level>> getPreviousPoolKeys() {
+        return previousKeys;
     }
 
-    public boolean isGenerating() {
-        return state != PoolState.IDLE;
+    public boolean isReady() {
+        return !readyPool.isEmpty();
     }
 
     public PoolState getState() {
@@ -238,13 +250,25 @@ public class WorldPool {
     }
 
     public void cleanup() {
-        PooledWorlds pooled;
+        PooledWorlds<T> pooled;
         while ((pooled = readyPool.poll()) != null) {
             deletePooledLevels(pooled.overworld(), pooled.nether(), pooled.end());
         }
-        if (preloadFuture != null) preloadFuture.cancel(false);
-        if (spawnSearchFuture != null) spawnSearchFuture.cancel(false);
-        if (worldCreationFuture != null) worldCreationFuture.cancel(false);
+        preloader.reset();
+        // Cancelling leaves these non-null; a cancelled future still reports isDone(), so the next
+        // kickOff's tick* would see it as "done" and getNow() would throw CancellationException.
+        if (preloadFuture != null) {
+            preloadFuture.cancel(false);
+            preloadFuture = null;
+        }
+        if (spawnSearchFuture != null) {
+            spawnSearchFuture.cancel(false);
+            spawnSearchFuture = null;
+        }
+        if (worldCreationFuture != null) {
+            worldCreationFuture.cancel(false);
+            worldCreationFuture = null;
+        }
         if (pendingLevels != null) {
             deletePooledLevels(
                 pendingLevels.getOrThrow(VanillaDimension.Overworld),
@@ -255,14 +279,13 @@ public class WorldPool {
         pendingLevels = null;
         pendingOverworld = null;
         pendingSpawn = null;
-        state = PoolState.IDLE;
+        pendingData = null;
+        setState(PoolState.IDLE);
     }
 
     private void deletePooledLevels(CustomLevel... levels) {
         for (CustomLevel level : levels) {
-            if (ArcadeDimensions.hasCustomLevel(server, level)) {
-                ArcadeDimensions.delete(server, level);
-            }
+            WorldDeletion.deleteDimensionAsync(server, level);
         }
     }
 }

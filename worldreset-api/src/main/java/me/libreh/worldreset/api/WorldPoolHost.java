@@ -7,12 +7,18 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.concurrent.CompletableFuture;
 
-public interface WorldPoolHost {
+// T is host-defined data produced during spawn finding and carried on the pooled worlds
+// (e.g. Manhunt's circle spawn layout). Hosts without extra data use Void.
+public interface WorldPoolHost<T> {
     int maxPoolSize();
 
     long nextSeed();
 
     float resolvePreloadDistance(MinecraftServer server);
 
-    CompletableFuture<@Nullable BlockPos> findSpawn(ServerLevel overworld);
+    // Owns the whole spawn stage: the pool waits for this future, preloads around the returned
+    // spawn (falling back to 0,64,0 when null), and stores the data on the PooledWorlds.
+    CompletableFuture<SpawnResult<T>> findSpawn(ServerLevel overworld);
+
+    record SpawnResult<T>(@Nullable BlockPos spawn, @Nullable T data) {}
 }

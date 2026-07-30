@@ -13,7 +13,7 @@ public final class DimensionKeys {
 
     private DimensionKeys() {}
 
-    public static String randomSuffix() {
+    private static String randomSuffix() {
         StringBuilder sb = new StringBuilder(16);
         for (int i = 0; i < 16; i++) {
             sb.append(ALPHANUM.charAt(RANDOM.nextInt(ALPHANUM.length())));
