@@ -1,6 +1,7 @@
 package me.libreh.worldreset.world;
 
 import me.libreh.worldreset.WorldReset;
+import me.libreh.worldreset.api.ServerTaskExecutor;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.protocol.game.ServerboundClientCommandPacket;
 import net.minecraft.server.MinecraftServer;
@@ -13,9 +14,9 @@ import java.util.Set;
 
 public class PlayerManager {
     private final MinecraftServer server;
-    private final me.libreh.worldreset.api.ServerTaskExecutor taskExecutor;
+    private final ServerTaskExecutor taskExecutor;
 
-    public PlayerManager(MinecraftServer server, me.libreh.worldreset.api.ServerTaskExecutor taskExecutor) {
+    public PlayerManager(MinecraftServer server, ServerTaskExecutor taskExecutor) {
         this.server = server;
         this.taskExecutor = taskExecutor;
     }
@@ -42,8 +43,7 @@ public class PlayerManager {
         );
     }
 
-    public void teleportToOverworldSpawn(ServerPlayer player) {
-        var overworld = WorldReset.worlds(server).getGameOverworld();
+    public void teleportToOverworldSpawn(ServerPlayer player, ServerLevel overworld) {
         BlockPos worldSpawnPos = overworld.getRespawnData().pos();
         Vec3 spawnPos = player.adjustSpawnLocation(overworld, worldSpawnPos).getBottomCenter();
         player.teleportTo(
@@ -65,6 +65,9 @@ public class PlayerManager {
         );
     }
 
+    // Dead players can't be teleported, so this forges the client's respawn-button packet to force
+    // a respawn server-side. Vanilla replaces the ServerPlayer instance during respawn, so the
+    // follow-up runs a tick later via the executor and re-reads connection.player to get the new one.
     public void respawnPlayer(ServerPlayer player) {
         var connection = player.connection;
         connection.handleClientCommand(

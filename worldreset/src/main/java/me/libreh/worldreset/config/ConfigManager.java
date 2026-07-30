@@ -58,8 +58,7 @@ public class ConfigManager {
         } catch(Throwable exception) {
             success = false;
             CONFIG = oldConfig;
-            WorldReset.LOGGER.error("Error reading config!");
-            exception.printStackTrace();
+            WorldReset.LOGGER.error("Error reading config!", exception);
         }
         return success;
     }
@@ -183,14 +182,13 @@ public class ConfigManager {
         try {
             Files.writeString(CONFIG_PATH, GSON.toJson(CONFIG));
         } catch (Exception e) {
-            WorldReset.LOGGER.error("Error saving config!");
-            e.printStackTrace();
+            WorldReset.LOGGER.error("Error saving config!", e);
         }
     }
 
     public static Config config() {
         if (CONFIG == null) {
-            CONFIG = Config.DEFAULT;
+            CONFIG = new Config();
         }
         return CONFIG;
     }

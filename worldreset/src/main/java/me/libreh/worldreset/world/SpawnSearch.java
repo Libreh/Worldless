@@ -30,59 +30,59 @@ public final class SpawnSearch {
     private SpawnSearch() {}
 
     public static @Nullable BlockPos findSpawn(ServerLevel overworld, Config.SpawnNear spawnNear, MinecraftServer server) {
-        if (spawnNear.type != SpawnType.NONE && !spawnNear.target.isEmpty()) {
-            BlockPos located = null;
-            BlockPos searchOrigin = BlockPos.ZERO;
-
-            for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
-                BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
-                if (candidate == null) break;
-
-                if (spawnNear.requireSurface) {
-                    overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
-                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
-                    if (candidate.getY() < surfaceY - 10) {
-                        WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
-                            spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
-                            attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
-                        double angle = attempt * (Math.PI / 2);
-                        searchOrigin = new BlockPos(
-                            (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
-                            0,
-                            (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
-                        continue;
-                    }
-                }
-
-                located = candidate;
-                break;
-            }
-
-            if (located != null) {
-                int spawnX = located.getX();
-                int spawnZ = located.getZ();
-                if (spawnNear.offset > 0) {
-                    double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
-                    spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
-                    spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
-                }
-                BlockPos spawnPos = SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
-                if (spawnPos == null) {
-                    overworld.getChunk(spawnX >> 4, spawnZ >> 4);
-                    int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
-                    spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
-                }
-                WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
-                return spawnPos;
-            }
-            WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
-                spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
-            return null;
+        if (spawnNear.type == SpawnType.NONE || spawnNear.target.isEmpty()) {
+            BlockPos spawnPos = SpawnFinder.findSpawn(overworld);
+            WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
+            return spawnPos;
         }
 
-        BlockPos spawnPos = SpawnFinder.findSpawn(overworld);
-        WorldReset.LOGGER.info("Found world spawn: {}", spawnPos);
-        return spawnPos;
+        BlockPos located = null;
+        BlockPos searchOrigin = BlockPos.ZERO;
+
+        for (int attempt = 0; attempt <= SPAWN_SEARCH_RETRIES; attempt++) {
+            BlockPos candidate = findSpawnTarget(overworld, spawnNear, searchOrigin);
+            if (candidate == null) break;
+
+            if (spawnNear.requireSurface) {
+                overworld.getChunk(candidate.getX() >> 4, candidate.getZ() >> 4);
+                int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, candidate.getX(), candidate.getZ());
+                if (candidate.getY() < surfaceY - 10) {
+                    WorldReset.LOGGER.warn("Found {} '{}' is underground (y={}, surface={}); {}",
+                        spawnNear.type, spawnNear.target, candidate.getY(), surfaceY,
+                        attempt < SPAWN_SEARCH_RETRIES ? "retrying..." : "using default spawn");
+                    double angle = attempt * (Math.PI / 2);
+                    searchOrigin = new BlockPos(
+                        (int) (Math.cos(angle) * SPAWN_SEARCH_MAX_DISTANCE),
+                        0,
+                        (int) (Math.sin(angle) * SPAWN_SEARCH_MAX_DISTANCE));
+                    continue;
+                }
+            }
+
+            located = candidate;
+            break;
+        }
+
+        if (located != null) {
+            int spawnX = located.getX();
+            int spawnZ = located.getZ();
+            if (spawnNear.offset > 0) {
+                double angle = new Random(overworld.getSeed()).nextDouble() * 2 * Math.PI;
+                spawnX += (int) Math.round(Math.cos(angle) * spawnNear.offset);
+                spawnZ += (int) Math.round(Math.sin(angle) * spawnNear.offset);
+            }
+            BlockPos spawnPos = SpawnFinder.findSpawnNear(overworld, new BlockPos(spawnX, 0, spawnZ));
+            if (spawnPos == null) {
+                overworld.getChunk(spawnX >> 4, spawnZ >> 4);
+                int surfaceY = overworld.getHeight(Heightmap.Types.MOTION_BLOCKING_NO_LEAVES, spawnX, spawnZ);
+                spawnPos = new BlockPos(spawnX, surfaceY, spawnZ);
+            }
+            WorldReset.LOGGER.info("Set world spawn near {}: {}", spawnNear.target, spawnPos);
+            return spawnPos;
+        }
+        WorldReset.LOGGER.warn("Could not find {} '{}' within {} blocks; using default spawn",
+            spawnNear.type, spawnNear.target, SPAWN_SEARCH_MAX_DISTANCE);
+        return null;
     }
 
     private static @Nullable BlockPos findSpawnTarget(ServerLevel overworld, Config.SpawnNear spawnNear, BlockPos searchOrigin) {

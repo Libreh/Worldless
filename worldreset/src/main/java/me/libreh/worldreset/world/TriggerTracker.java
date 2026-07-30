@@ -1,59 +1,38 @@
 package me.libreh.worldreset.world;
 
 import eu.pb4.predicate.api.MinecraftPredicate;
-import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.Config;
+import me.libreh.worldreset.config.ConfigManager;
 import me.libreh.worldreset.predicate.Trigger;
 import me.libreh.worldreset.predicate.TriggerState;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.function.Predicate;
-import java.util.function.Supplier;
 
 public class TriggerTracker {
-    private static final int PORTAL_TELEPORT_WINDOW_TICKS = 5;
-
     private final MinecraftServer server;
-    private final Supplier<Config> config;
 
-    private final Map<UUID, PendingPortal> pendingPortalEntries = new HashMap<>();
     private final Map<MinecraftPredicate, TriggerState> states = new IdentityHashMap<>();
 
-    public TriggerTracker(MinecraftServer server, Supplier<Config> config) {
+    public TriggerTracker(MinecraftServer server) {
         this.server = server;
-        this.config = config;
     }
 
     public void reset() {
-        pendingPortalEntries.clear();
         states.clear();
     }
 
-    public void notePortalTouch(ServerPlayer player, Identifier blockId) {
-        ResourceKey<Level> dim = player.level() instanceof ServerLevel sl
-            ? WorldReset.worlds(server).toVanillaDimension(sl)
-            : player.level().dimension();
-        pendingPortalEntries.put(player.getUUID(), new PendingPortal(blockId, dim, server.getTickCount()));
-    }
-
-    public boolean confirmPortalTeleport(ServerPlayer player) {
-        PendingPortal pending = pendingPortalEntries.remove(player.getUUID());
-        if (pending == null) return false;
-        if (server.getTickCount() - pending.tick > PORTAL_TELEPORT_WINDOW_TICKS) return false;
-        return note(state -> state.notePortal(player, pending.blockId, pending.originDimension));
+    public boolean notePortalUse(ServerPlayer player, Identifier blockId, ResourceKey<Level> originDimension) {
+        return note(state -> state.notePortal(player, blockId, originDimension));
     }
 
     public boolean noteEntityDeath(Identifier entityId, Entity entity) {
@@ -65,16 +44,25 @@ public class TriggerTracker {
     }
 
     public boolean shouldStop() {
-        return anySatisfied(config.get().stopTriggers);
+        return anySatisfied(ConfigManager.config().stopTriggers);
     }
 
     public boolean shouldReset() {
-        return anySatisfied(config.get().resetTriggers);
+        return anySatisfied(ConfigManager.config().resetTriggers);
     }
 
     private boolean note(Predicate<TriggerState> event) {
+        Config cfg = ConfigManager.config();
+        // Both lists must be visited every time (not short-circuited): an event can advance a
+        // trigger in one list even when a trigger in the other already fired this round.
+        boolean stopAdvanced = noteAll(cfg.stopTriggers, event);
+        boolean resetAdvanced = noteAll(cfg.resetTriggers, event);
+        return stopAdvanced | resetAdvanced;
+    }
+
+    private boolean noteAll(List<MinecraftPredicate> triggers, Predicate<TriggerState> event) {
         boolean any = false;
-        for (MinecraftPredicate trigger : allTriggers()) {
+        for (MinecraftPredicate trigger : triggers) {
             TriggerState state = stateFor(trigger);
             if (state != null && event.test(state)) any = true;
         }
@@ -94,13 +82,4 @@ public class TriggerTracker {
         if (!(predicate instanceof Trigger trigger)) return null;
         return states.computeIfAbsent(predicate, k -> trigger.newState());
     }
-
-    private List<MinecraftPredicate> allTriggers() {
-        Config cfg = config.get();
-        List<MinecraftPredicate> all = new ArrayList<>(cfg.stopTriggers);
-        all.addAll(cfg.resetTriggers);
-        return all;
-    }
-
-    private record PendingPortal(Identifier blockId, ResourceKey<Level> originDimension, int tick) {}
 }

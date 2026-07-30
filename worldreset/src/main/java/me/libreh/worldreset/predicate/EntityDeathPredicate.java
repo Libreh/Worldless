@@ -57,6 +57,7 @@ public final class EntityDeathPredicate extends AbstractPredicate implements Tri
 
         @Override
         public boolean noteDeath(Identifier entityId, Entity deadEntity) {
+            if (triggered) return false;
             if (entity.equals(entityId) && test(PredicateContext.of(deadEntity)).success()) {
                 triggered = true;
                 return true;

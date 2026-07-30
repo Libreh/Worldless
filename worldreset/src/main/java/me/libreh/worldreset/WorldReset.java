@@ -1,7 +1,6 @@
 package me.libreh.worldreset;
 
 import me.libreh.worldreset.api.LobbyWorld;
-import me.libreh.worldreset.api.WorldPreloader;
 import me.libreh.worldreset.command.ResetCommand;
 import me.libreh.worldreset.command.WorldResetCommand;
 import me.libreh.worldreset.config.ConfigManager;
@@ -12,18 +11,14 @@ import me.lucko.fabric.api.permissions.v0.Permissions;
 import net.fabricmc.api.EnvType;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.entity.event.v1.ServerEntityLevelChangeEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
-import net.minecraft.core.Registry;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
-import net.minecraft.server.level.TicketType;
 import net.minecraft.server.permissions.PermissionLevel;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.Nullable;
@@ -47,12 +42,6 @@ public final class WorldReset implements ModInitializer {
 
 	@Override
 	public void onInitialize() {
-		WorldPreloader.ASYNC_CHUNK_TICKET = Registry.register(
-			BuiltInRegistries.TICKET_TYPE,
-			"worldreset:async_chunk",
-			new TicketType(0L, TicketType.FLAG_LOADING)
-		);
-
 		Predicates.register();
 
 		ConfigManager.load();
@@ -71,13 +60,6 @@ public final class WorldReset implements ModInitializer {
 		ServerTickEvents.START_SERVER_TICK.register(server -> {
 			WorldManager worlds = worlds(server);
 			if (worlds != null) worlds.onServerTick();
-		});
-		ServerEntityLevelChangeEvents.AFTER_PLAYER_CHANGE_LEVEL.register((player, origin, destination) -> {
-			WorldManager worlds = worlds(destination.getServer());
-			if (worlds == null) return;
-			if (worlds.triggers.confirmPortalTeleport(player)) {
-				worlds.evaluateTriggers();
-			}
 		});
 	}
 

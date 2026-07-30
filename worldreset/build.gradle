@@ -17,6 +17,8 @@ dependencies {
     api project(path: ":worldreset-api")
     include project(path: ":worldreset-api")
 
+    compileOnly "io.github.llamalad7:mixinextras-common:0.5.4"
+
     compileOnly "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
     localRuntime "me.lucko:fabric-permissions-api:${project.permissions_api_version}"
     include "me.lucko:fabric-permissions-api:${project.permissions_api_version}"

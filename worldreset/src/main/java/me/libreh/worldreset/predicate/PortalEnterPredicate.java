@@ -85,8 +85,7 @@ public final class PortalEnterPredicate extends AbstractPredicate implements Tri
         @Override
         public boolean notePortal(ServerPlayer player, Identifier blockId, ResourceKey<Level> originDim) {
             if (block.equals(blockId) && matchesDimension(originDim) && test(PredicateContext.of(player)).success()) {
-                entered.add(player.getUUID());
-                return true;
+                return entered.add(player.getUUID());
             }
             return false;
         }

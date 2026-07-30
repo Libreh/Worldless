@@ -20,8 +20,6 @@ public abstract class PlayerAdvancementsMixin {
         var worlds = WorldReset.worlds(player.level().getServer());
         if (worlds == null) return;
         if (!((PlayerAdvancements) (Object) this).getOrStartProgress(advancementHolder).isDone()) return;
-        if (worlds.triggers.noteAdvancement(player, advancementHolder.id())) {
-            worlds.evaluateTriggers();
-        }
+        worlds.onAdvancement(player, advancementHolder.id());
     }
 }

@@ -19,8 +19,6 @@ public class LivingEntityDieMixin {
         var worlds = WorldReset.worlds(self.level().getServer());
         if (worlds == null) return;
         Identifier id = BuiltInRegistries.ENTITY_TYPE.getKey(self.getType());
-        if (worlds.triggers.noteEntityDeath(id, self)) {
-            worlds.evaluateTriggers();
-        }
+        worlds.onEntityDeath(id, self);
     }
 }

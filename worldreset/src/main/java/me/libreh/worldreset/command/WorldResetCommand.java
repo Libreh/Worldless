@@ -6,8 +6,11 @@ import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.arguments.StringArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
 import eu.pb4.predicate.api.MinecraftPredicate;
 import me.libreh.worldreset.WorldReset;
 import me.libreh.worldreset.config.ConfigManager;
@@ -17,6 +20,7 @@ import me.libreh.worldreset.predicate.EntityDeathPredicate;
 import me.libreh.worldreset.predicate.PortalEnterPredicate;
 import me.libreh.worldreset.predicate.Trigger;
 import me.libreh.worldreset.util.TimeUtil;
+import me.libreh.worldreset.world.WorldManager;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.commands.CommandBuildContext;
@@ -36,13 +40,25 @@ import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.MinecraftServer;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public final class WorldResetCommand {
     private static final DynamicCommandExceptionType INVALID_STRUCTURE = new DynamicCommandExceptionType(
             o -> Component.literal("Invalid structure: " + o));
     private static final SimpleCommandExceptionType INDEX_OUT_OF_RANGE = new SimpleCommandExceptionType(
             Component.literal("Trigger index out of range"));
+
+    private enum TriggerList {
+        STOP,
+        RESET,
+        BOTH;
+
+        String label() {
+            return name().toLowerCase(Locale.ROOT);
+        }
+    }
 
     public static void register(CommandDispatcher<CommandSourceStack> dispatcher, CommandBuildContext buildContext) {
         dispatcher.register(build("worldreset", buildContext));
@@ -93,29 +109,29 @@ public final class WorldResetCommand {
                 .then(Commands.literal("triggers")
                         .requires(src -> WorldReset.hasPermission(src, "triggers"))
                         .then(Commands.literal("list")
-                                .executes(ctx -> listTriggers(ctx, "both"))
-                                .then(Commands.literal("stop").executes(ctx -> listTriggers(ctx, "stop")))
-                                .then(Commands.literal("reset").executes(ctx -> listTriggers(ctx, "reset"))))
+                                .executes(ctx -> listTriggers(ctx, TriggerList.BOTH))
+                                .then(Commands.literal("stop").executes(ctx -> listTriggers(ctx, TriggerList.STOP)))
+                                .then(Commands.literal("reset").executes(ctx -> listTriggers(ctx, TriggerList.RESET))))
                         .then(Commands.literal("clear")
-                                .executes(ctx -> clearTriggers(ctx, "both"))
-                                .then(Commands.literal("stop").executes(ctx -> clearTriggers(ctx, "stop")))
-                                .then(Commands.literal("reset").executes(ctx -> clearTriggers(ctx, "reset"))))
+                                .executes(ctx -> clearTriggers(ctx, TriggerList.BOTH))
+                                .then(Commands.literal("stop").executes(ctx -> clearTriggers(ctx, TriggerList.STOP)))
+                                .then(Commands.literal("reset").executes(ctx -> clearTriggers(ctx, TriggerList.RESET))))
                         .then(Commands.literal("remove")
                                 .then(Commands.literal("stop")
                                         .then(Commands.argument("index", IntegerArgumentType.integer(0))
-                                                .suggests((c, b) -> suggestIndices(c, b, "stop"))
-                                                .executes(ctx -> removeTrigger(ctx, "stop"))))
+                                                .suggests((c, b) -> suggestIndices(c, b, TriggerList.STOP))
+                                                .executes(ctx -> removeTrigger(ctx, TriggerList.STOP))))
                                 .then(Commands.literal("reset")
                                         .then(Commands.argument("index", IntegerArgumentType.integer(0))
-                                                .suggests((c, b) -> suggestIndices(c, b, "reset"))
-                                                .executes(ctx -> removeTrigger(ctx, "reset")))))
+                                                .suggests((c, b) -> suggestIndices(c, b, TriggerList.RESET))
+                                                .executes(ctx -> removeTrigger(ctx, TriggerList.RESET)))))
                         .then(Commands.literal("add")
-                                .then(buildAddBranch("stop", buildContext))
-                                .then(buildAddBranch("reset", buildContext))));
+                                .then(buildAddBranch(TriggerList.STOP, buildContext))
+                                .then(buildAddBranch(TriggerList.RESET, buildContext))));
     }
 
-    private static LiteralArgumentBuilder<CommandSourceStack> buildAddBranch(String listType, CommandBuildContext buildContext) {
-        return Commands.literal(listType)
+    private static LiteralArgumentBuilder<CommandSourceStack> buildAddBranch(TriggerList listType, CommandBuildContext buildContext) {
+        return Commands.literal(listType.label())
                 .then(Commands.literal("portal")
                         .then(Commands.argument("block", ResourceArgument.resource(buildContext, Registries.BLOCK))
                                 .executes(ctx -> addPortalTrigger(ctx, listType, Optional.empty(), false))
@@ -145,12 +161,9 @@ public final class WorldResetCommand {
                                                 BoolArgumentType.getBool(ctx, "require_all_players"))))));
     }
 
-    private static int resetWorlds(CommandSourceStack source, String seed) {
+    static int resetWorlds(CommandSourceStack source, String seed) {
         if (!WorldReset.worlds(source.getServer()).resetWorlds(seed)) {
-            source.sendSuccess(() -> Component.literal("Next world isn't ready yet, reset queued")
-                    .append(CommonComponents.NEW_LINE)
-                    .append(Component.literal("Consider increasing pool_size in the config"))
-                .withStyle(ChatFormatting.YELLOW), false);
+            source.sendSuccess(WorldManager::queuedResetMessage, false);
         }
         return 1;
     }
@@ -228,22 +241,22 @@ public final class WorldResetCommand {
         return base;
     }
 
-    private static List<MinecraftPredicate> getTriggers(String listType) {
-        return listType.equals("stop") ? ConfigManager.config().stopTriggers : ConfigManager.config().resetTriggers;
+    private static List<MinecraftPredicate> getTriggers(TriggerList listType) {
+        return listType == TriggerList.STOP ? ConfigManager.config().stopTriggers : ConfigManager.config().resetTriggers;
     }
 
-    private static int listTriggers(CommandContext<CommandSourceStack> ctx, String listType) {
-        if (listType.equals("both")) {
-            int count = listTriggers(ctx, "stop");
-            count += listTriggers(ctx, "reset");
+    private static int listTriggers(CommandContext<CommandSourceStack> ctx, TriggerList listType) {
+        if (listType == TriggerList.BOTH) {
+            int count = listTriggers(ctx, TriggerList.STOP);
+            count += listTriggers(ctx, TriggerList.RESET);
             return count;
         }
         var triggers = getTriggers(listType);
         if (triggers.isEmpty()) {
-            ctx.getSource().sendSuccess(() -> Component.literal("No " + listType + " triggers configured."), false);
+            ctx.getSource().sendSuccess(() -> Component.literal("No " + listType.label() + " triggers configured."), false);
             return 0;
         }
-        ctx.getSource().sendSuccess(() -> Component.literal(listType + " triggers:"), false);
+        ctx.getSource().sendSuccess(() -> Component.literal(listType.label() + " triggers:"), false);
         for (int i = 0; i < triggers.size(); i++) {
             final int index = i;
             ctx.getSource().sendSuccess(() -> Component.literal("  [" + index + "] " + describe(triggers.get(index))), false);
@@ -251,59 +264,59 @@ public final class WorldResetCommand {
         return triggers.size();
     }
 
-    private static int clearTriggers(CommandContext<CommandSourceStack> ctx, String listType) {
-        if (listType.equals("both")) {
-            clearTriggers(ctx, "stop");
-            clearTriggers(ctx, "reset");
+    private static int clearTriggers(CommandContext<CommandSourceStack> ctx, TriggerList listType) {
+        if (listType == TriggerList.BOTH) {
+            clearTriggers(ctx, TriggerList.STOP);
+            clearTriggers(ctx, TriggerList.RESET);
             ctx.getSource().sendSuccess(() -> Component.literal("Cleared all triggers"), false);
             return 1;
         }
         getTriggers(listType).clear();
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> Component.literal("Cleared all " + listType + " triggers."), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Cleared all " + listType.label() + " triggers."), false);
         return 1;
     }
 
-    private static int removeTrigger(CommandContext<CommandSourceStack> ctx, String listType) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+    private static int removeTrigger(CommandContext<CommandSourceStack> ctx, TriggerList listType) throws CommandSyntaxException {
         int index = IntegerArgumentType.getInteger(ctx, "index");
         var triggers = getTriggers(listType);
         if (index >= triggers.size()) throw INDEX_OUT_OF_RANGE.create();
         MinecraftPredicate removed = triggers.remove(index);
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> Component.literal("Removed " + listType + " trigger: " + describe(removed)), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Removed " + listType.label() + " trigger: " + describe(removed)), false);
         return 1;
     }
 
-    private static int addPortalTrigger(CommandContext<CommandSourceStack> ctx, String listType, Optional<Identifier> originDimension, boolean requireAll) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+    private static int addPortalTrigger(CommandContext<CommandSourceStack> ctx, TriggerList listType, Optional<Identifier> originDimension, boolean requireAll) throws CommandSyntaxException {
         var holder = ResourceArgument.getResource(ctx, "block", Registries.BLOCK);
         Identifier id = holder.key().identifier();
         PortalEnterPredicate entry = new PortalEnterPredicate(id, requireAll, originDimension, Optional.empty());
         getTriggers(listType).add(entry);
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType + " trigger: " + describe(entry)), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType.label() + " trigger: " + describe(entry)), false);
         return 1;
     }
 
-    private static int addDeathTrigger(CommandContext<CommandSourceStack> ctx, String listType) throws com.mojang.brigadier.exceptions.CommandSyntaxException {
+    private static int addDeathTrigger(CommandContext<CommandSourceStack> ctx, TriggerList listType) throws CommandSyntaxException {
         var holder = ResourceArgument.getResource(ctx, "entity", Registries.ENTITY_TYPE);
         Identifier id = holder.key().identifier();
         EntityDeathPredicate entry = new EntityDeathPredicate(id, Optional.empty());
         getTriggers(listType).add(entry);
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType + " trigger: " + describe(entry)), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType.label() + " trigger: " + describe(entry)), false);
         return 1;
     }
 
-    private static int addAdvancementTrigger(CommandContext<CommandSourceStack> ctx, String listType, boolean requireAll) {
+    private static int addAdvancementTrigger(CommandContext<CommandSourceStack> ctx, TriggerList listType, boolean requireAll) {
         Identifier id = IdentifierArgument.getId(ctx, "advancement");
         AdvancementPredicate entry = new AdvancementPredicate(id, requireAll, Optional.empty());
         getTriggers(listType).add(entry);
         ConfigManager.save();
-        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType + " trigger: " + describe(entry)), false);
+        ctx.getSource().sendSuccess(() -> Component.literal("Added " + listType.label() + " trigger: " + describe(entry)), false);
         return 1;
     }
 
-    private static java.util.concurrent.CompletableFuture<com.mojang.brigadier.suggestion.Suggestions> suggestIndices(CommandContext<CommandSourceStack> ctx, com.mojang.brigadier.suggestion.SuggestionsBuilder builder, String listType) {
+    private static CompletableFuture<Suggestions> suggestIndices(CommandContext<CommandSourceStack> ctx, SuggestionsBuilder builder, TriggerList listType) {
         var triggers = getTriggers(listType);
         for (int i = 0; i < triggers.size(); i++) {
             builder.suggest(i, Component.literal(describe(triggers.get(i))));

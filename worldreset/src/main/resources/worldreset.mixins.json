@@ -1,23 +1,22 @@
 {
   "required": true,
   "package": "me.libreh.worldreset.mixin",
-  "compatibilityLevel": "JAVA_21",
+  "compatibilityLevel": "JAVA_25",
   "mixins": [
     "game.EntityMixin",
-    "game.EntityTeleportSameDimensionMixin",
     "game.LivingEntityDieMixin",
     "game.LivingEntityMixin",
     "game.PlayerAdvancementsMixin",
+    "game.PortalProcessorAccessor",
     "game.ServerPlayerDieMixin",
     "game.ServerPlayerEndCreditsMixin",
     "world.MinecraftServerHolderMixin",
-    "world.PlayerListMixin",
-    "world.RaidsAccessor"
+    "world.PlayerListMixin"
   ],
   "injectors": {
     "defaultRequire": 1
   },
   "overwrites": {
     "requireAnnotations": true
-	}
+  }
 }

@@ -69,8 +69,7 @@ public final class AdvancementPredicate extends AbstractPredicate implements Tri
         @Override
         public boolean noteAdvancement(ServerPlayer player, Identifier advancementId) {
             if (advancement.equals(advancementId) && test(PredicateContext.of(player)).success()) {
-                awarded.add(player.getUUID());
-                return true;
+                return awarded.add(player.getUUID());
             }
             return false;
         }
