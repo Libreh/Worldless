@@ -42,7 +42,7 @@ public class WorldDeletion {
             }
         }
 
-        ResetFlags.skipCloseSave.set(true);
+        ResetFlags.setSkipCloseSave(true);
         try {
             for (CustomLevel level : levels) {
                 try {
@@ -52,7 +52,7 @@ public class WorldDeletion {
                 }
             }
         } finally {
-            ResetFlags.skipCloseSave.set(false);
+            ResetFlags.setSkipCloseSave(false);
         }
 
         List<Path> toDeleteAsync = new ArrayList<>();

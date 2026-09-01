@@ -61,6 +61,10 @@ public final class WorldReset implements ModInitializer {
 			WorldManager worlds = worlds(server);
 			if (worlds != null) worlds.onServerTick();
 		});
+		ServerLifecycleEvents.SERVER_STOPPING.register(server -> {
+			WorldManager worlds = worlds(server);
+			if (worlds != null) worlds.onServerStopping();
+		});
 	}
 
     public static boolean hasPermission(CommandSourceStack source, String permission) {

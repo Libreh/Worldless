@@ -135,8 +135,10 @@ public class WorldPreloader {
 
     @SuppressWarnings("unchecked")
     public CompletableFuture<ChunkAccess> getChunkAsync(ServerLevel level, ChunkPos chunkPos) {
-        if (!level.getServer().isSameThread()) {
-            return CompletableFuture.supplyAsync(() -> getChunkAsync(level, chunkPos), level.getServer()).thenCompose(future -> future);
+        MinecraftServer server = level.getServer();
+        if (!server.isRunning()) return CompletableFuture.completedFuture(null);
+        if (!server.isSameThread()) {
+            return CompletableFuture.supplyAsync(() -> getChunkAsync(level, chunkPos), server).thenCompose(future -> future);
         }
 
         var chunkManager = level.getChunkSource();

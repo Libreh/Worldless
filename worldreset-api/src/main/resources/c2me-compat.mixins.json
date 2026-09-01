@@ -4,7 +4,10 @@
   "compatibilityLevel": "JAVA_25",
   "plugin": "me.libreh.worldreset.mixin.c2me.C2meCompatibilityPlugin",
   "mixins": [
-    "ConsecutiveExecutorMixin"
+    "C2meStorageCloseJoinMixin",
+    "C2meStorageFlushMixin",
+    "ConsecutiveExecutorMixin",
+    "DfcGenDumperMixin"
   ],
   "injectors": {
     "defaultRequire": 1

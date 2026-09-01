@@ -142,11 +142,11 @@ public class ResetManager {
     }
 
     private void withSkipCloseSave(Runnable action) {
-        ResetFlags.skipCloseSave.set(true);
+        ResetFlags.setSkipCloseSave(true);
         try {
             action.run();
         } finally {
-            ResetFlags.skipCloseSave.set(false);
+            ResetFlags.setSkipCloseSave(false);
         }
     }
 
